@@ -6,7 +6,7 @@
 
 A browser-native 32-bit RISC-V microcomputer emulator designed to boot and run the FreeCP/M operating system
 
-[![Try it Online](https://img.shields.io/badge/Try_it_Online-vemu.example.com-blue?style=for-the-badge&logo=riscv)](https://vemu.example.com)
+[![Try it Online](https://img.shields.io/badge/Try_it_Online-mazin--o3.github.io%2Fvemu-blue?style=for-the-badge&logo=riscv)](https://mazin-o3.github.io/vemu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 </div>

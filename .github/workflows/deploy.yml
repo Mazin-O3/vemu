@@ -1,8 +1,11 @@
-name: Deploy to GitHub Pages
+name: Deploy VEMU to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -10,36 +13,61 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
 
       - name: Build WASM
-        run: cargo build --release --target wasm32-unknown-unknown -p veewasm
+        run: cargo build --release --target wasm32-unknown-unknown
 
       - name: Stage site
         run: |
+          mkdir -p site
+
           cp target/wasm32-unknown-unknown/release/veewasm.wasm .
-          mkdir site
+
           cp index.html help.md run.sh README.md veewasm.wasm site/
-          cp -r js css freecpm site/
+
+          cp -r js site/
+          cp -r css site/
+          cp -r freecpm site/
+
+          # Copy documentation and images
+          cp -r docs site/
+
+          # Disable Jekyll processing
           touch site/.nojekyll
 
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: site
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
 
-      - id: deployment
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
