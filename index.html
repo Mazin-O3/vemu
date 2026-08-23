@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vemu</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <div class="main-area">
+    <div class="terminal-panel">
+      <div class="term-header">
+        <span class="term-dot"></span> Terminal
+      </div>
+      <div class="term-screen" id="term-container">
+        <canvas id="term-canvas"></canvas>
+        <textarea id="term-input" autocomplete="off" autocapitalize="off" spellcheck="false" rows="1"></textarea>
+      </div>
+    </div>
+
+    <div class="ctrl-bar" id="ctrl-bar">
+      <div class="ctrl-bar-left">
+        <button class="btn btn-primary" id="btn-run" title="Run/Pause"><span><svg viewBox="0 0 12 12" width="14" height="14"><path d="M4 2v8l6-4z" fill="currentColor"/></svg></span></button>
+        <button class="btn" id="btn-step" title="Step"><span><svg viewBox="0 0 12 12" width="14" height="14"><path d="M3 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+        <button class="btn btn-danger" title="Reset"><span><svg viewBox="0 0 12 12" width="14" height="14"><path d="M2 6a4 4 0 1 1 4 4M2 6l2.5-2.5M2 6h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span></button>
+      </div>
+      <div class="ctrl-bar-right">
+        <div class="speed-group">
+          <select id="clock-freq" title="System clock frequency">
+            <option value="50000">50 KHz</option>
+            <option value="100000" selected>100 KHz</option>
+            <option value="250000">250 KHz</option>
+            <option value="1000000">1 MHz</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="side-panels">
+      <div class="panel p-cpu">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> CPU
+          <span class="badge hide-on-open" id="cpu-hdr-status">illegal | PC 0x00000000</span>
+        </div>
+        <div class="panel-body">
+          <div class="d-row">
+            <span class="l2" title="Program Counter - address of the current instruction">PC</span>
+            <span class="l3" id="cpu-pc">0x00000000</span>
+          </div>
+          <div class="d-row">
+            <span class="l2" title="Current instruction being executed">Instruction</span>
+            <span class="l3" id="cpu-inst">illegal</span>
+          </div>
+          <div class="d-row" style="color:var(--warn)">
+            <span class="l2">ISA</span>
+            <span class="l3">RV32IM</span>
+          </div>
+
+          <div class="sub-head">Registers</div>
+          <div class="reg-grid" id="cpu-regs"></div>
+        </div>
+      </div>
+
+      <div class="panel p-mem">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> RAM <span class="badge">64KB</span>
+        </div>
+        <div class="panel-body">
+          <div class="mem-goto-row">
+            <span class="l2">Goto:</span>
+            <input type="text" id="mem-goto" value="0x0000" placeholder="0x0000">
+            <span class="mem-legend">
+              <span><span class="mem-legend-dot read"></span> Read</span>
+              <span><span class="mem-legend-dot write"></span> Write</span>
+            </span>
+          </div>
+          <div class="mem-view" id="mem-view"></div>
+        </div>
+      </div>
+
+      <div class="panel p-disk">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Disk
+          <span class="badge hide-on-open" id="disk-state-badge">Idle</span>
+        </div>
+        <div class="panel-body">
+          <div class="disk-status">
+            <div class="d-row"><span class="l2" title="Current sector LBA address">Sector</span><span class="l1" id="disk-sector">0</span></div>
+            <div class="d-row"><span class="l2" title="Byte offset within current sector">Offset</span><span class="warn" id="disk-offset">0</span></div>
+            <div class="d-row"><span class="l2" title="Disk controller state machine">State</span><span class="l3" id="disk-state">IDLE</span></div>
+          </div>
+          <div class="disk-box" id="disk-volumes"></div>
+          <div class="disk-upload">
+            <div class="upload-zone" id="upload-zone">
+              <div id="file-list"></div>
+            </div>
+            <div class="upload-bar">
+              <span id="file-counter" class="file-counter">0 Files</span>
+              <div class="upload-dest">
+                <select id="upload-vol" class="upload-select"><option value="0">A:</option><option value="1">B:</option><option value="2">C:</option><option value="3">D:</option></select>
+                <select id="upload-user" class="upload-select"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel p-dma">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> DMA <span class="badge hide-on-open" id="dma-state">Idle</span>
+        </div>
+        <div class="panel-body">
+          <div class="dma-ch" id="dma-ch"></div>
+        </div>
+      </div>
+
+      <div class="panel p-timer">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Timer <span class="badge hide-on-open" id="timer-badge">Stopped</span>
+        </div>
+        <div class="panel-body">
+          <div class="timer-row"><span class="dma-label">Count</span><span class="l1" id="timer-cntr">0</span></div>
+          <div class="timer-row"><span class="dma-label">Prescale</span><span class="warn" id="timer-prescale">1</span></div>
+          <div class="timer-row"><span class="dma-label">Mode</span><span class="l3" id="timer-mode">Stopped</span></div>
+        </div>
+      </div>
+
+      <div class="panel p-bus">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Bus <span class="badge hide-on-open" id="bus-last-tx">—</span>
+        </div>
+        <div class="panel-body">
+          <div id="bus-tx-list" class="bus-tx-list"></div>
+        </div>
+      </div>
+
+      <div class="panel p-mmap">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Memory Map
+        </div>
+        <div class="panel-body">
+          <div class="sub-head" data-target="mmap-ram">
+            <span class="arrow" id="mmap-ram-arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> RAM
+          </div>
+          <div id="mmap-ram" class="mmap-reg hidden">
+            <div class="mmap-row"><span class="mmap-name">Bootloader</span><span class="mmap-addr" id="mmap-boot-addr">0x0000–</span><span class="mmap-size" id="mmap-boot-size">–</span></div>
+            <div class="mmap-row"><span class="mmap-name">User Program</span><span class="mmap-addr" id="mmap-user-addr">—</span><span class="mmap-size" id="mmap-user-size">—</span></div>
+            <div class="mmap-row"><span class="mmap-name">Kernel</span><span class="mmap-addr" id="mmap-kern-addr">—</span><span class="mmap-size" id="mmap-kern-size">—</span></div>
+            <div class="mmap-row"><span class="mmap-name">MMIO</span><span class="mmap-addr" id="mmap-mmio-addr">0xFF00–0xFFFF</span><span class="mmap-size" id="mmap-mmio-size">256 B</span></div>
+          </div>
+
+          <div class="sub-head" data-target="mmap-dma">
+            <span class="arrow" id="mmap-dma-arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> DMA
+          </div>
+          <div id="mmap-dma" class="mmap-reg hidden">
+            <div class="mmap-row"><span class="mmap-name">SAR</span><span class="mmap-addr">0xFF20</span><span class="mmap-desc">Source address</span></div>
+            <div class="mmap-row"><span class="mmap-name">DAR</span><span class="mmap-addr">0xFF24</span><span class="mmap-desc">Dest address</span></div>
+            <div class="mmap-row"><span class="mmap-name">WCR</span><span class="mmap-addr">0xFF28</span><span class="mmap-desc">Word count</span></div>
+            <div class="mmap-row"><span class="mmap-name">CSTR</span><span class="mmap-addr">0xFF2C</span><span class="mmap-desc">Ctrl/Status</span></div>
+          </div>
+
+          <div class="sub-head" data-target="mmap-disk">
+            <span class="arrow" id="mmap-disk-arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Disk
+          </div>
+          <div id="mmap-disk" class="mmap-reg hidden">
+            <div class="mmap-row"><span class="mmap-name">BUFFER</span><span class="mmap-addr">0xFF00</span><span class="mmap-desc">Sector buffer 512 B</span></div>
+            <div class="mmap-row"><span class="mmap-name">SECTOR</span><span class="mmap-addr">0xFF04</span><span class="mmap-desc">Sector select</span></div>
+          </div>
+
+          <div class="sub-head" data-target="mmap-timer">
+            <span class="arrow" id="mmap-timer-arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Timer
+          </div>
+          <div id="mmap-timer" class="mmap-reg hidden">
+            <div class="mmap-row"><span class="mmap-name">CSTR</span><span class="mmap-addr">0xFF18</span><span class="mmap-desc">Control/status</span></div>
+            <div class="mmap-row"><span class="mmap-name">CNTR</span><span class="mmap-addr">0xFF1C</span><span class="mmap-desc">Counter</span></div>
+          </div>
+
+          <div class="mmap-row mmap-row-divider"><span class="mmap-name">DSP_DATA</span><span class="mmap-addr">0xFF10</span><span class="mmap-desc">Terminal output</span></div>
+          <div class="mmap-row"><span class="mmap-name">KBD_DATA</span><span class="mmap-addr">0xFF08</span><span class="mmap-desc">Key data</span></div>
+          <div class="mmap-row"><span class="mmap-name">KBD_STAT</span><span class="mmap-addr">0xFF0C</span><span class="mmap-desc">Key ready</span></div>
+          <div class="mmap-row"><span class="mmap-name">SysCLK</span><span class="mmap-addr">0xFF14</span><span class="mmap-desc">Clock KHz</span></div>
+        </div>
+      </div>
+
+      <div class="panel p-help">
+        <div class="panel-header">
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Help
+        </div>
+        <div class="panel-body" id="help-body"></div>
+      </div>
+  </div>
+
+  <input type="file" id="file-input" class="hidden" multiple>
+
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

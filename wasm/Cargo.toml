@@ -1,0 +1,12 @@
+[package]
+name = "veewasm"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+veecore = { path = "../core" }
+dlmalloc = { version = "0.2", features = ["global"] }
