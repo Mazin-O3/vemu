@@ -1,6 +1,6 @@
 # Vemu
 
-Vemu is an 8-bit-inspired microcomputer powered by a 32-bit RISC-V CPU. It runs **FreeCP/M**, a modern take on the classic CP/M operating system. Type **help** for list of commands, or just run a program — try **basic**, **mandel**, or **snake**.
+Vemu is an 8-bit-inspired microcomputer powered by a 32-bit RISC-V CPU. It runs **FreeCP/M**, a CP/M-inspired operating system. Type **help** for list of commands, or just run a program — try **basic**, **mandel**, or **snake**.
 
 ## Boot Process
 
