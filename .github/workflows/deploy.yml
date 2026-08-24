@@ -47,6 +47,9 @@ jobs:
           # Copy documentation and images
           cp -r docs site/
 
+          #copy page icon
+          cp vemu-icon.png site/
+
           # Disable Jekyll processing
           touch site/.nojekyll
 

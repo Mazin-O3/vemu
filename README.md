@@ -17,7 +17,7 @@ A browser-native 32-bit RISC-V microcomputer emulator designed to boot and run t
 
 ## Overview
 
-Vemu simulates a self-contained 32-bit hardware environment inside the browser client. Upon initialization, the system loads a bundled 2 MB virtual disk image, and boots directly to the FreeCP/M.
+Vemu simulates a self-contained 32-bit hardware environment inside the browser.
 
 ## Hardware Specification
 
