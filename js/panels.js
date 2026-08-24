@@ -45,8 +45,8 @@ export function initRegGrid() {
     const grid = document.getElementById('cpu-regs');
     let html = '';
     for (let i = 0; i < 32; i += 2) {
-        html += '<span class="r">x' + i + ' (' + REG_NAMES[i] + ')</span><span class="v" id="reg-' + i + '">0x00000000</span>';
-        html += '<span class="r">x' + (i + 1) + ' (' + REG_NAMES[i + 1] + ')</span><span class="v" id="reg-' + (i + 1) + '">0x00000000</span>';
+        html += '<span class="r"><span class="rid">x' + i + '</span> (' + REG_NAMES[i] + ')</span><span class="v" id="reg-' + i + '">0x00000000</span>';
+        html += '<span class="r"><span class="rid">x' + (i + 1) + '</span> (' + REG_NAMES[i + 1] + ')</span><span class="v" id="reg-' + (i + 1) + '">0x00000000</span>';
     }
     grid.innerHTML = html;
     regEls = [];

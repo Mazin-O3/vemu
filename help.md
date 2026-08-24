@@ -22,10 +22,10 @@ FreeCP/M is a single-user, single-tasking operating system — it runs only one 
 
 <br>
 
-- **Memory layout — the workbench**: The Transient Program Area (TPA) runs from `0x0100` up to kernel region. Memory-mapped I/O occupies `0xFF00-0xFFFF` — the wall of dials and switches at the back of the shop.
-- **Syscalls — ringing the bell**: Programs request OS services (open a file, print text, read the keyboard) by calling through a syscall table in kernel memory — like ringing for the supervisor.
+- **Memory layout — The workbench**: The Transient Program Area (TPA) runs from `0x0100` up to kernel region. Memory-mapped I/O occupies `0xFF00-0xFFFF` — the wall of dials and switches at the back of the shop.
+- **Syscalls — Ringing the bell**: Programs request OS services (open a file, print text, read the keyboard) by calling through a syscall table in kernel memory — like ringing for the supervisor.
 - **Environment — Four hooks by the door**: 3 kernel-managed memory slots plus a user slot. Slot 0 holds the syscall table pointer. Slot 1 stores the exit code of the last program. Slot 2 stores the SUBMIT batch offset — the CCP resumes batch from where it left off after each program reload. Slot 3 is free for user programs.
-- **Volumes — the storage room map**: The disk is a grid of fixed-size 1 KB blocks. The four volumes (A:–D:) are pre-provisioned from it — each volume gets an equal share — and all four are mounted at boot. Use `SET X: MT` to mount an unmounted volume, `SET X: EX N` to extend it by N KB (blocks), or `SET X: UM N` to shrink it.
+- **Volumes — The storage room map**: The disk is a grid of fixed-size 1 KB blocks. The four volumes (A:–D:) are pre-provisioned from it — each volume gets an equal share — and all four are mounted at boot. Use `SET X: MT` to mount an unmounted volume, `SET X: EX N` to extend it by N KB (blocks), or `SET X: UM N` to shrink it.
 - **One program at a time**: One program runs at a time. Running a program overwrites the CCP. When it exits, the kernel reloads the CCP from disk.
 
 ## File System

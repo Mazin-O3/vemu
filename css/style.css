@@ -196,8 +196,9 @@ html, body {
 .p-mmap .sub-head { gap: 8px; padding-left: 10px; }
 .sub-head .arrow.open { transform: rotate(90deg); }
 .reg-grid { display: grid; grid-template-columns: 10ch 12ch 10ch 12ch; gap: 1px 8px; justify-content: center; }
-.reg-grid .r { color: var(--text); text-align: center; }
-.reg-grid .v { font-family: var(--font-mono); color: var(--l3); text-align: center; }
+.reg-grid .r { color: var(--text); text-align: left; font-family: var(--font-mono); }
+.reg-grid .rid { display: inline-block; min-width: 3ch; }
+.reg-grid .v { font-family: var(--font-mono); color: var(--l3); text-align: left; }
 
 .mem-view { container-type: inline-size; line-height: 1.4; font-family: var(--font-mono); font-size: clamp(8px, 100cqw / 36, 13px); overflow-x: hidden; }
 .mem-view .mem-row { display: flex; white-space: pre; }
