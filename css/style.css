@@ -234,7 +234,7 @@ html, body {
 .mmap-desc { color: var(--l3); }
 .mmap-row-divider { margin-top: 4px; border-top: 1px solid var(--border); }
 
-.dma-ch { margin-bottom: 6px; }
+.dma { margin-bottom: 6px; }
 .dma-label { color: var(--l2); min-width: 11ch; flex-shrink: 0; }
 .dma-val { font-family: var(--font-mono); color: var(--l3); }
 .dma-val.l1 { color: var(--l1); }

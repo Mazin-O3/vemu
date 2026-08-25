@@ -104,9 +104,9 @@ export function updatePanels() {
         TIMER_CNTR = TIMER_BASE + 2;
         DMA_BASE = wasm.veecore_dma_base();
         DMA_SAR = DMA_BASE;
-        DMA_DAR = DMA_BASE + 2;
-        DMA_WCR = DMA_BASE + 4;
-        DMA_CSTR = DMA_BASE + 6;
+        DMA_DAR = DMA_BASE + 4;
+        DMA_WCR = DMA_BASE + 8;
+        DMA_CSTR = DMA_BASE + 12;
     }
     
     const pc = wasm.veecore_pc();
@@ -150,7 +150,7 @@ export function updatePanels() {
     const active = !!(cstr & 1);
     const stream = !!(cstr & 2);
     const step = wasm.veecore_dma_step();
-    const el = document.getElementById('dma-ch');
+    const el = document.getElementById('dma');
     el.innerHTML = '<div class="dma-row"><span class="dma-label">State</span><span class="dma-val">' + (active ? 'Active' : 'Idle') + '</span></div>' +
         '<div class="dma-row"><span class="dma-label">Source</span><span class="dma-val l1">0x' + sar.toString(16)
         .padStart(4, '0') + ' <span class="dma-ctx">(' + resolveDestName(sar) + ')</span></span></div>' +
