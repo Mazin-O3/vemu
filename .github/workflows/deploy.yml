@@ -42,7 +42,7 @@ jobs:
 
           cp -r js site/
           cp -r css site/
-          cp -r freecpm site/
+          cp -r cpm-neo site/
 
           # Copy documentation and images
           cp -r docs site/

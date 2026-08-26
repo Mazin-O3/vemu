@@ -2,9 +2,9 @@
 
 # Vemu
 
-**A RISC-V microcomputer emulator running FreeCP/M in the browser**
+**A RISC-V microcomputer emulator running CP/M Neo in the browser**
 
-A browser-native 32-bit RISC-V microcomputer emulator designed to boot and run the FreeCP/M operating system
+A browser-native 32-bit RISC-V microcomputer emulator designed to boot and run the CP/M Neo operating system
 
 [![Try it Online](https://img.shields.io/badge/Try_it_Online-mazin--o3.github.io%2Fvemu-blue?style=for-the-badge&logo=riscv)](https://mazin-o3.github.io/vemu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
@@ -28,7 +28,7 @@ Vemu emulates a custom 32-bit RISC-V microcomputer:
 | **CPU** | RV32I + M extension for hardware multiplication and division |
 | **RAM** | 64 KB, byte-addressable (`0x0000`–`0xFEFF`) |
 | **Memory-mapped I/O** | Top page `0xFF00`–`0xFFFF` |
-| **Storage** | 2 MB FreeCP/M disk|
+| **Storage** | 2 MB CP/M Neo disk|
 | **System clock** | Selectable 50 kHz – 1 MHz |
 
 
@@ -83,9 +83,9 @@ Read: `[0]` RUNNING (1 = busy), `[1]`–`[5]` readback of STREAM/SRC_INC/DST_INC
 | 15  | WRITE  | 1 = Write buffer to disk, 0 = load sector into buffer |
 | 14:0| LBA    | Physical sector number                      |
 
-## FreeCP/M
+## CP/M Neo
 
-Vemu boots [FreeCP/M](https://github.com/Mazin-O3/freecpm), a modern take on the classic CP/M operating system.
+Vemu boots [CP/M Neo](https://github.com/Mazin-O3/cpm-neo), a modern take on the classic CP/M operating system.
 
 ---
 
@@ -100,14 +100,14 @@ For local development, `run.sh` serves the site on port 8080. Its optional `buil
 
 ## Regenerating the bundled disk image
 
-`freecpm/bootloader.bin` and `freecpm/disk.img` are produced by the [FreeCP/M](https://github.com/Mazin-O3/freecpm) build:
+`cpm-neo/bootloader.bin` and `cpm-neo/disk.img` are produced by the [CP/M Neo](https://github.com/Mazin-O3/cpm-neo) build:
 
 ```sh
-git clone https://github.com/Mazin-O3/freecpm
-cd freecpm
+git clone https://github.com/Mazin-O3/cpm-neo
+cd cpm-neo
 make -C sysgen
 ./sysgen/build/sysgen new --disk-size=2048K --mem=64K --platform=vemu --march=rv32im
-cp sysgen/build/bootloader.bin sysgen/build/disk.img /path/to/vemu/freecpm/
+cp sysgen/build/bootloader.bin sysgen/build/disk.img /path/to/vemu/cpm-neo/
 ```
 
 ## License

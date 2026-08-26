@@ -1,10 +1,10 @@
 # Vemu
 
-Vemu is an 8-bit-inspired microcomputer powered by a 32-bit RISC-V CPU. It runs **FreeCP/M**, a CP/M-inspired operating system. Type **help** for list of commands, or just run a program — try **basic**, **mandel**, or **snake**.
+Vemu is an 8-bit-inspired microcomputer powered by a 32-bit RISC-V CPU. It runs **CP/M Neo**, a CP/M-inspired operating system. Try **pico welcome.txt** to get started.
 
 ## Boot Process
 
-Think of the machine as a small workshop. FreeCP/M wakes it up in two stages each time it starts: a night-shift worker unlocks the doors, the supervisor sets everything up, and then the front-desk assistant (the CCP) is called in to greet you.
+Think of the machine as a small workshop. CP/M Neo wakes it up in two stages each time it starts: a night-shift worker unlocks the doors, the supervisor sets everything up, and then the front-desk assistant (the CCP) is called in to greet you.
 
 <img src="docs/images/boot-process.png" alt="Boot process" width="100%">
 
@@ -16,7 +16,7 @@ Think of the machine as a small workshop. FreeCP/M wakes it up in two stages eac
 
 ## OS Architecture
 
-FreeCP/M is a single-user, single-tasking operating system — it runs only one program at a time, and that program has full access to memory above `0x0100`. Think of it as a small workshop where you clear the bench for each new project.
+CP/M Neo is a single-user, single-tasking operating system — it runs only one program at a time, and that program has full access to memory above `0x0100`. Think of it as a small workshop where you clear the bench for each new project.
 
 <img src="docs/images/arch.png" alt="os layers" width="100%">
 
@@ -30,7 +30,7 @@ FreeCP/M is a single-user, single-tasking operating system — it runs only one 
 
 ## File System
 
-FreeCP/M uses a filesystem inspired by CP/M's BDOS. The disk is divided into **fixed-size 1 KB blocks**. The **4 logical volumes** (A:-D:) are split equally from that block grid, and each volume is formatted and mounted at boot. A volume map (VMAP) records each volume's extents (contiguous runs of blocks) in the disk metadata.
+CP/M Neo uses a filesystem inspired by CP/M's BDOS. The disk is divided into **fixed-size 1 KB blocks**. The **4 logical volumes** (A:-D:) are split equally from that block grid, and each volume is formatted and mounted at boot. A volume map (VMAP) records each volume's extents (contiguous runs of blocks) in the disk metadata.
 
 - **User areas — the private rooms**: 16 numbered workspaces (0-15) per volume. Switch with `USER n`.
 - **Format — the card catalog**: An extent-based BDOS with 32-byte directory entries. Each extent holds 8 blocks (8 KB), and a file can span up to 256 extents — a 2 MB maximum per volume.

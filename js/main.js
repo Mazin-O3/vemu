@@ -111,7 +111,7 @@ async function initWasm() {
         // Fetch disk.img first — its build identity (Last-Modified, hash fallback)
         // names the IndexedDB DB, so a rebuilt disk supersedes any stored snapshot.
         var diskResp = null;
-        try { diskResp = await loadBin('freecpm/disk.img?' + Date.now()); } catch (e) {}
+        try { diskResp = await loadBin('cpm-neo/disk.img?' + Date.now()); } catch (e) {}
         if (!diskResp) throw new Error('No disk image');
         
         var stamp = diskResp.lastModified;
@@ -133,7 +133,7 @@ async function initWasm() {
         wasm.veecore_init_with(ptr, diskImage.length);
         
         try {
-            var bootResp = await loadBin('freecpm/bootloader.bin?' + Date.now());
+            var bootResp = await loadBin('cpm-neo/bootloader.bin?' + Date.now());
             bootBin = bootResp ? bootResp.data : null;
         } catch (e) {}
         if (bootBin) {

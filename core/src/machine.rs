@@ -57,7 +57,7 @@ impl Bus {
             tx_ring_head: 0,
             tx_ring_count: 0,
         };
-        let boot_bin = include_bytes!("../../freecpm/bootloader.bin");
+        let boot_bin = include_bytes!("../../cpm-neo/bootloader.bin");
         bus.ram.load(0, boot_bin);
         bus
     }
@@ -304,7 +304,7 @@ impl Machine {
         self.bus.kbd = Kbd::new();
         self.cycles = 0;
         self.rr_slot = 0;
-        let boot_bin = include_bytes!("../../freecpm/bootloader.bin");
+        let boot_bin = include_bytes!("../../cpm-neo/bootloader.bin");
         self.bus.ram.load(0, boot_bin);
     }
 }
@@ -315,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_bootloader_loads() {
-        let disk_img = include_bytes!("../../freecpm/disk.img");
+        let disk_img = include_bytes!("../../cpm-neo/disk.img");
         let mut m = Machine::new(disk_img.to_vec());
         for _ in 0..2000000 {
             if m.cpu.trap.is_some() {

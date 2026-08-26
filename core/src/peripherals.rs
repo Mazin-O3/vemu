@@ -3,7 +3,7 @@ use core::cmp;
 
 pub const DISK_SECTOR_SIZE: usize = 512;
 
-/// I/O register bases. Keep in sync with freecpm/platform/vemu/mmio.h.
+/// I/O register bases. Keep in sync with cpm-neo/platform/vemu/mmio.h.
 /// Every register sits in its own 4-byte-aligned word.
 pub const DISK_BASE: u16 = 0xFF00;
 pub const DISK_SECTOR_O: u16 = 0x04;  // 0xFF04
