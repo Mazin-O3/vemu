@@ -1,6 +1,6 @@
 # Vemu
 
-Vemu is an 8-bit-inspired microcomputer powered by a 32-bit RISC-V CPU. It runs **CP/M Neo**, a CP/M-inspired operating system. Try **pico welcome.txt** to get started.
+Vemu is An 8-bit inspired RISC-V computer emulator, designed to give a simple environment for learning about computer architecture and operating systems. Try **pico welcome.txt** to get started.
 
 ## Boot Process
 

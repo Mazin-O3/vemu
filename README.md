@@ -4,7 +4,7 @@
 
 **A RISC-V microcomputer emulator running CP/M Neo in the browser**
 
-A browser-native 32-bit RISC-V microcomputer emulator designed to boot and run the CP/M Neo operating system
+An 8-bit inspired RISC-V computer emulator, designed to give a simple environment for learning about computer architecture and operating systems.
 
 [![Try it Online](https://img.shields.io/badge/Try_it_Online-mazin--o3.github.io%2Fvemu-blue?style=for-the-badge&logo=riscv)](https://mazin-o3.github.io/vemu/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
