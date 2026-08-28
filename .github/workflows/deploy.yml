@@ -44,8 +44,8 @@ jobs:
           cp -r css site/
           cp -r cpm-neo site/
 
-          # Copy documentation and images
-          cp -r docs site/
+          # Copy images
+          cp -r images site/
 
           #copy page icon
           cp vemu-icon.png site/
