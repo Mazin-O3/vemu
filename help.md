@@ -6,7 +6,7 @@ Vemu is an 8-bit inspired RISC-V computer emulator, designed to give a simple en
 
 Think of the machine as a small workshop. CP/M Neo wakes it up in two stages each time it starts: a night-shift worker unlocks the doors, the supervisor sets everything up, and then the front-desk assistant (the CCP) is called in to greet you.
 
-<img src="docs/images/boot-process.png" alt="Boot process" width="100%">
+<img src="images/boot-process.png" alt="Boot process" width="100%">
 
 <br>
 
@@ -18,7 +18,7 @@ Think of the machine as a small workshop. CP/M Neo wakes it up in two stages eac
 
 CP/M Neo is a single-user, single-tasking operating system — it runs only one program at a time, and that program has full access to memory above `0x0100`. Think of it as a small workshop where you clear the bench for each new project.
 
-<img src="docs/images/arch.png" alt="os layers" width="100%">
+<img src="images/os-arch.png" alt="os layers" width="100%">
 
 <br>
 
@@ -37,6 +37,6 @@ CP/M Neo uses a filesystem inspired by CP/M's BDOS. The disk is divided into **f
 - **8.3 filenames — the book spine**: A filename can have up to 8 characters for the name and 3 characters for the extension. Examples: `HELLO.TXT`, `GAME.BAS`.
 - **Max 256 files** per volume: one 256-entry root directory, with each entry tagged with its user area.
 
-<img src="docs/images/disk-format.png" alt="Disk format" width="100%">
+<img src="images/disk-format.png" alt="Disk format" width="100%">
 
 Created by <a href="mailto:mazin.mohamed.swe@gmail.com" style="color:#FFB000;text-decoration:none;font-weight:bold;">Eng. Mazin Mohamed</a>
