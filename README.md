@@ -210,7 +210,7 @@ For local development, `run.sh` serves the site on port 8080. Its optional `buil
 git clone https://github.com/Mazin-O3/cpm-neo
 cd cpm-neo
 make -C sysgen
-./sysgen/build/sysgen new --disk-size=2048K --mem=64K --platform=vemu --arch=riscv32
+./sysgen/build/sysgen new --disk-size=2048K --mem=64K --platform=vemu
 cp sysgen/build/bootloader.bin sysgen/build/disk.img /path/to/vemu/cpm-neo/
 ```
 
