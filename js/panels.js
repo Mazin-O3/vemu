@@ -151,14 +151,14 @@ export function updatePanels() {
     const stream = !!(cstr & 2);
     const step = wasm.veecore_dma_step();
     const el = document.getElementById('dma');
-    el.innerHTML = '<div class="dma-row"><span class="dma-label">State</span><span class="dma-val">' + (active ? 'Active' : 'Idle') + '</span></div>' +
-        '<div class="dma-row"><span class="dma-label">Source</span><span class="dma-val l1">0x' + sar.toString(16)
-        .padStart(4, '0') + ' <span class="dma-ctx">(' + resolveDestName(sar) + ')</span></span></div>' +
-        '<div class="dma-row"><span class="dma-label">Destination</span><span class="dma-val warn">0x' + dar.toString(16)
-        .padStart(4, '0') + ' <span class="dma-ctx">(' + resolveDestName(dar) + ')</span></span></div>' +
-        '<div class="dma-row"><span class="dma-label">Bytes</span><span class="dma-val">' + wcr + '</span></div>' +
-        '<div class="dma-row"><span class="dma-label">Step</span><span class="dma-val">' + (1 << step) + ' (' + stepNames[step] + ')</span></div>' +
-        '<div class="dma-row"><span class="dma-label">Mode</span><span class="dma-val">' + (stream ? 'Stream' : 'Normal') + '</span></div>';
+    el.innerHTML = '<div class="d-row"><span class="l2">State</span><span class="l3">' + (active ? 'Active' : 'Idle') + '</span></div>' +
+        '<div class="d-row"><span class="l2">Source</span><span class="l3 l1">0x' + sar.toString(16)
+        + '</span></div>' +
+        '<div class="d-row"><span class="l2">Destination</span><span class="l3 warn">0x' + dar.toString(16)
+        + '</span></div>' +
+        '<div class="d-row"><span class="l2">Bytes</span><span class="l3">' + wcr + '</span></div>' +
+        '<div class="d-row"><span class="l2">Step</span><span class="l3">' + (1 << step) + ' (' + stepNames[step] + ')</span></div>' +
+        '<div class="d-row"><span class="l2">Mode</span><span class="l3">' + (stream ? 'Stream' : 'Normal') + '</span></div>';
     
     // DMA state badge
     {

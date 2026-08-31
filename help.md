@@ -38,5 +38,3 @@ CP/M Neo uses a filesystem inspired by CP/M's BDOS. The disk is divided into **f
 - **Max 256 files** per volume: one 256-entry root directory, with each entry tagged with its user area.
 
 <img src="images/disk-format.png" alt="Disk format" width="100%">
-
-Created by <a href="mailto:mazin.mohamed.swe@gmail.com" style="color:#FFB000;text-decoration:none;font-weight:bold;">Eng. Mazin Mohamed</a>
