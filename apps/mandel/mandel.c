@@ -1,5 +1,5 @@
 #include "stdio.h"
-#include "terminal.h"
+#include "../lib/terminal.h"
 
 #define SCALE 10
 #define S (1 << SCALE)

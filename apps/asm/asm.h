@@ -3,11 +3,11 @@
 
 #include <cpm.h>
 
-#define ASM_LINE_SZ 128
-#define MAX_SYMS 128
-#define SYM_SZ 16
+#define ASM_LINE_SZ  128
+#define MAX_SYMS     128
+#define SYM_SZ       16
 #define OUT_CHUNK_SZ 256
-#define RD_BUF_SZ 512
+#define RD_BUF_SZ    512
 
 enum
 {
@@ -22,6 +22,7 @@ enum
     T_MINUS,
     T_EOF
 };
+
 enum
 {
     R,
