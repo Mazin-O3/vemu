@@ -129,8 +129,9 @@ ASM <FILE.ASM>
 
 ### Syscall interface
 
-Programs communicate with the operating system through a syscall table located
-at `%SYSCALL`. Please refer to the [Syscall reference](https://github.com/Mazin-O3/cpm-neo/blob/main/docs/syscall-reference.md) for more detail.
+Programs communicate with the operating system through a syscall table whose
+address the kernel publishes in environment slot 0 (`ENV_SYSCALL_PTR`); the
+assembler exposes it as `%SYSCALL`. Please refer to the [Syscall reference](https://github.com/Mazin-O3/cpm-neo/blob/main/docs/syscall-reference.md) for the table layout.
 
 ### Program skeleton
 
