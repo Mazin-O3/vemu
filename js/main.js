@@ -129,9 +129,12 @@ async function bootMachine(mode) {
 
         // The image's build identity (Last-Modified, hash fallback) names the
         // IndexedDB DB, so each mode's disk supersedes any stored snapshot.
+        // The mode is prefixed into the key: both disk flavors share the same
+        // Last-Modified timestamp (staged together), so without it each mode
+        // would resolve to the same DB and load the wrong image on switch.
         var stamp = resp.lastModified;
         if (!stamp) stamp = fnv1a(resp.data);
-        var dbName = diskDBName(stamp);
+        var dbName = diskDBName(isXip + ':' + stamp);
         setDiskDBName(dbName);
 
         var diskImage = null;
