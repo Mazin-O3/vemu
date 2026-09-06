@@ -4,15 +4,17 @@ Vemu is an 8-bit inspired RISC-V computer emulator, designed to give a simple en
 
 ## Boot Process
 
-Think of the machine as a small workshop. CP/M Neo wakes it up in two stages each time it starts: a night-shift worker unlocks the doors, the supervisor sets everything up, and then the front-desk assistant (the CCP) is called in to greet you.
+CP/M Neo follows a unified boot sequence across all storage configurations:
 
-<img src="images/boot-process.png" alt="Boot process" width="100%">
+* **Bootloader**: Initializes hardware and hands off control to the Kernel.
+* **Kernel**: Initializes system services and starts the **Console Command Processor (CCP)**.
 
-<br>
+Code Execution Modes:
 
-- **Stage 1 — The night-shift worker (Bootloader)**: A small program that sets up the CPU, reads disk metadata, copies the kernel from disk to its target address, then jumps to the kernel entry point.
+* **Disk Mode:** Copies code into RAM before execution.
+* **Flash Mode:** Uses Execute-In-Place (XIP) to execute code directly from the Flash window.
 
-- **Stage 2 — The supervisor (Kernel)**: The Kernel starts by initializing the hardware, reading the volume map and mounting volumes, then loads the Console Command Processor (CCP) from disk and run it. When a program exits, the kernel reloads the CCP from disk.
+<img src="images/boot-process.png" alt="Boot process diagram" width="100%">
 
 ## OS Architecture
 

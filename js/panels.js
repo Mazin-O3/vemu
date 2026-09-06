@@ -34,12 +34,25 @@ let DMA_BASE = null
     , DMA_DAR = null
     , DMA_WCR = null
     , DMA_CSTR = null;
+let XIP_BASE = null
+    , XIP_LEN = null;
 
 function inRange(addr, base, size) {
     return addr >= base && addr < base + size;
 }
 const memFlash = [];
 let manualAddr = null;
+
+/* Forget mode-dependent panel caches (memory-map rows, register addresses,
+ * flash window) when the machine is re-initialized for another storage mode. */
+export function resetPanelsMode() {
+    mmapInit = false;
+    manualAddr = null;
+    DISK_BASE = null;
+    XIP_BASE = null;
+    XIP_LEN = null;
+    memFlash.length = 0;
+}
 
 export function initRegGrid() {
     const grid = document.getElementById('cpu-regs');
@@ -54,6 +67,7 @@ export function initRegGrid() {
 }
 
 function resolveDestName(addr) {
+    if (XIP_BASE !== null && inRange(addr, XIP_BASE, XIP_LEN)) return 'FLASH';
     if (inRange(addr, DISK_BUFFER, 1)) return 'DISK_BUFFER';
     if (inRange(addr, DISK_SECTOR, 2)) return 'DISK_SECTOR';
     if (inRange(addr, KBD_DATA, 1)) return 'KBD_DATA';
@@ -87,6 +101,9 @@ export function updatePanels() {
     if (!wasm) return;
     
     updateMemoryMap();
+    
+    const flashHead = document.getElementById('mmap-flash-head');
+    if (flashHead) flashHead.classList.toggle('hidden', wasm.veecore_xip_mode() === 0);
     
     if (DISK_BASE === null) {
         DISK_BASE = wasm.veecore_disk_base();
@@ -201,20 +218,61 @@ export function updatePanels() {
         timerBadge.textContent = 'Stopped';
     }
     
-    // Disk
-    document.getElementById('disk-sector')
-        .textContent = wasm.veecore_disk_sector();
-    document.getElementById('disk-offset')
-        .textContent = wasm.veecore_disk_offset();
-    const diskState = wasm.veecore_disk_state();
-    const diskStates = ['Idle', 'Buffer Write (BFWR)', 'Buffer Read (BFRD)', 'Disk Read (DISKR)', 'Disk Write (DISKW)'];
-    const diskStateEl = document.getElementById('disk-state');
-    diskStateEl.textContent = diskStates[diskState];
-    
-    diskStateEl.classList.remove('text-l1', 'text-l3');
-    diskStateEl.classList.add(diskState ? 'text-l1' : 'text-l3');
-    document.getElementById('disk-state-badge')
-        .textContent = diskStates[diskState];
+    // Storage: Disk controller vs XIP flash window (mode-dependent panel)
+    const xipOn = wasm.veecore_xip_mode() !== 0;
+    const xipBase = wasm.veecore_xip_base();
+    const xipLen = wasm.veecore_xip_len();
+    if (xipOn) {
+        XIP_BASE = xipBase;
+        XIP_LEN = xipLen;
+        document.getElementById('disk-panel-title')
+            .textContent = 'Flash';
+        document.getElementById('disk-state-badge')
+            .textContent = 'Read-only';
+        document.getElementById('disk-row1')
+            .style.display = 'none';
+        document.getElementById('disk-row2')
+            .style.display = 'none';
+        const l3 = document.getElementById('disk-row3-label');
+        l3.textContent = 'Last Access';
+        l3.title = 'Last CPU access into the flash window';
+        const sEl = document.getElementById('disk-state');
+        sEl.textContent = '0x' + wasm.veecore_last_mem_addr()
+            .toString(16)
+            .toUpperCase();
+        sEl.classList.remove('text-l1', 'text-l3');
+        sEl.classList.add('text-warn');
+    } else {
+        XIP_BASE = null;
+        XIP_LEN = null;
+        document.getElementById('disk-panel-title')
+            .textContent = 'Disk';
+        document.getElementById('disk-row1')
+            .style.display = '';
+        document.getElementById('disk-row2')
+            .style.display = '';
+        const l1 = document.getElementById('disk-row1-label');
+        l1.textContent = 'Sector';
+        l1.title = 'Current sector LBA address';
+        const l2 = document.getElementById('disk-row2-label');
+        l2.textContent = 'Offset';
+        l2.title = 'Byte offset within current sector';
+        const l3 = document.getElementById('disk-row3-label');
+        l3.textContent = 'State';
+        l3.title = 'Disk controller state machine';
+        document.getElementById('disk-sector')
+            .textContent = wasm.veecore_disk_sector();
+        document.getElementById('disk-offset')
+            .textContent = wasm.veecore_disk_offset();
+        const diskState = wasm.veecore_disk_state();
+        const diskStates = ['Idle', 'Buffer Write (BFWR)', 'Buffer Read (BFRD)', 'Disk Read (DISKR)', 'Disk Write (DISKW)'];
+        const diskStateEl = document.getElementById('disk-state');
+        diskStateEl.textContent = diskStates[diskState];
+        diskStateEl.classList.remove('text-l1', 'text-l3');
+        diskStateEl.classList.add(diskState ? 'text-l1' : 'text-l3');
+        document.getElementById('disk-state-badge')
+            .textContent = diskStates[diskState];
+    }
     
     // Volume stats
     updateVolumeStats();
@@ -246,7 +304,7 @@ export function updatePanels() {
 function memGoto(val) {
     const v = parseInt(val, 16);
     if (!isNaN(v)) {
-        manualAddr = v & 0xFFFF;
+        manualAddr = wasm.veecore_xip_mode() ? (v & 0x3FFFFF) : (v & 0xFFFF);
     } else {
         manualAddr = null;
     }
@@ -255,17 +313,22 @@ function memGoto(val) {
 
 function updateMemView() {
     if (!wasm) return;
+    const xipOn = wasm.veecore_xip_mode() !== 0;
+    const limit = xipOn ? wasm.veecore_xip_base() + wasm.veecore_xip_len() : 0x10000;
+    const xipBase = wasm.veecore_xip_base();
+    const xipLen = wasm.veecore_xip_len();
+    const addrPad = xipOn ? 6 : 4;
     let addr = manualAddr;
     if (addr === null) {
-        addr = (wasm.veecore_last_mem_addr() & 0xFFFF) & 0xFFF0;
+        addr = (wasm.veecore_last_mem_addr() % limit) & 0xFFF0;
         const el = document.getElementById('mem-goto');
         if (document.activeElement !== el) {
             el.value = '0x' + addr.toString(16)
-                .padStart(4, '0')
+                .padStart(addrPad, '0')
                 .toUpperCase();
         }
     }
-    const memAddr = wasm.veecore_last_mem_addr() & 0xFFFF;
+    const memAddr = wasm.veecore_last_mem_addr() % limit;
     const memSize = wasm.veecore_last_mem_size();
     const memWrite = wasm.veecore_last_mem_write();
     
@@ -287,11 +350,13 @@ function updateMemView() {
     
     let html = '';
     for (let r = 0; r < 8; r++) {
-        const a = (addr + r * 16) & 0xFFFF;
+        const a = xipOn ? (addr + r * 16) : ((addr + r * 16) & 0xFFFF);
         let bytes = '';
         for (let c = 0; c < 16; c++) {
             const addr2 = a + c;
-            const b = wasm.veecore_ram_byte(addr2);
+            const b = xipOn && addr2 >= xipBase && addr2 < xipBase + xipLen
+                ? wasm.veecore_flash_byte(addr2)
+                : wasm.veecore_ram_byte(addr2);
             const cls = isFlashing(addr2);
             bytes += (cls ? '<span class="' + cls + '">' : '') +
                 b.toString(16)
@@ -301,7 +366,7 @@ function updateMemView() {
             if (c === 7) bytes += ' ';
         }
         html += '<div class="mem-row"><span class="mem-addr">' + a.toString(16)
-            .padStart(4, '0')
+            .padStart(addrPad, '0')
             .toUpperCase() + ': </span><span class="mem-bytes">' + bytes + '</span></div>';
     }
     document.getElementById('mem-view')

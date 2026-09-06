@@ -1,18 +1,20 @@
 import './keyboard.js';
 import { loadBin, loadDiskFromDB, scheduleDiskSave, setDiskDBName, diskDBName, saveDiskToDB, cleanupOldDatabases } from './storage.js';
 import { flushTTY, renderTerminal, toggleCursor, lastActivity, resetTerminal } from './terminal.js';
-import { initRegGrid, updatePanels } from './panels.js';
+import { initRegGrid, resetPanelsMode, updatePanels } from './panels.js';
 
 import { renderFileList, onFilesPicked, onDragOver, onDrop } from './bdos.js';
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js';
 
 export let wasm = null;
 export let running = false;
+export let xipMode = 0;
 let rafId = null;
 let ticksPerFrame = Math.round(parseInt(document.getElementById('clock-freq')
     .value, 10) / 60);
 let panelTime = 0;
-let diskImage = null;
+let bootBusy = false;
+const diskCache = {};
 export let bootBin = null;
 
 window.addEventListener('unhandledrejection', function (e) {
@@ -100,6 +102,69 @@ function fnv1a(data) {
     return h >>> 0;
 }
 
+/* Boot (or reboot) the machine for the selected storage mode.
+ * mode 0 = Disk (kernel/CCP RAM-loaded), 1 = Flash (kernel/CCP run in place,
+ * XIP).  A mode switch is a full re-init: the matching disk image is loaded
+ * (cached per mode, persisting each flavor under its own IndexedDB identity)
+ * and a fresh Machine is built.  Returns the resolved IndexedDB name. */
+async function bootMachine(mode) {
+    if (bootBusy) return '';
+    bootBusy = true;
+    try {
+        if (!wasm) return '';
+        running = false;
+        if (rafId !== null) { cancelAnimationFrame(rafId);
+            rafId = null; }
+
+        var isXip = mode ? 1 : 0;
+        xipMode = isXip;
+
+        var imgPath = isXip ? 'cpm-neo/disk-xip.img' : 'cpm-neo/disk.img';
+        var resp = diskCache[imgPath];
+        if (!resp) {
+            try { resp = await loadBin(imgPath + '?' + Date.now()); } catch (e) {}
+            if (!resp) throw new Error('No disk image: ' + imgPath);
+            diskCache[imgPath] = resp;
+        }
+
+        // The image's build identity (Last-Modified, hash fallback) names the
+        // IndexedDB DB, so each mode's disk supersedes any stored snapshot.
+        var stamp = resp.lastModified;
+        if (!stamp) stamp = fnv1a(resp.data);
+        var dbName = diskDBName(stamp);
+        setDiskDBName(dbName);
+
+        var diskImage = null;
+        try { diskImage = await loadDiskFromDB(dbName); } catch (e) { diskImage = null; }
+        if (!diskImage) {
+            diskImage = resp.data;
+            try { await saveDiskToDB(diskImage, dbName); } catch (e) {}
+        }
+
+        var ptr = wasm.veecore_alloc(diskImage.length);
+        var mem = new Uint8Array(wasm.memory.buffer);
+        mem.set(diskImage, ptr);
+        wasm.veecore_init_xip(ptr, diskImage.length, isXip);
+
+        if (bootBin) {
+            var bootPtr = wasm.veecore_alloc(bootBin.length);
+            var bootMem = new Uint8Array(wasm.memory.buffer);
+            bootMem.set(bootBin, bootPtr);
+            wasm.veecore_load_bootloader(bootPtr, bootBin.length);
+        }
+
+        resetPanelsMode();
+        resetTerminal();
+        renderTerminal();
+        setClockHz(document.getElementById('clock-freq')
+            .value);
+        updatePanels();
+        return dbName;
+    } finally {
+        bootBusy = false;
+    }
+}
+
 async function initWasm() {
     try {
         var resp = await fetch('veewasm.wasm?' + Date.now());
@@ -107,42 +172,16 @@ async function initWasm() {
         var bytes = await resp.arrayBuffer();
         var mod = await WebAssembly.instantiate(bytes, {});
         wasm = mod.instance.exports;
-        
-        // Fetch disk.img first — its build identity (Last-Modified, hash fallback)
-        // names the IndexedDB DB, so a rebuilt disk supersedes any stored snapshot.
-        var diskResp = null;
-        try { diskResp = await loadBin('cpm-neo/disk.img?' + Date.now()); } catch (e) {}
-        if (!diskResp) throw new Error('No disk image');
-        
-        var stamp = diskResp.lastModified;
-        if (!stamp) stamp = fnv1a(diskResp.data);
-        var dbName = diskDBName(stamp);
-        setDiskDBName(dbName);
-        
-        try { diskImage = await loadDiskFromDB(dbName); } catch (e) { diskImage = null; }
-        if (!diskImage) {
-            diskImage = diskResp.data;
-            try { await saveDiskToDB(diskImage, dbName); } catch (e) {}
-        }
-        
+
+        var bootResp = null;
+        try { bootResp = await loadBin('cpm-neo/bootloader.bin?' + Date.now()); } catch (e) {}
+        bootBin = bootResp ? bootResp.data : null;
+
+        var mode = parseInt(document.getElementById('xip-mode')
+            .value, 10);
+        var dbName = await bootMachine(mode);
         cleanupOldDatabases(dbName);
-        
-        var ptr = wasm.veecore_alloc(diskImage.length);
-        var mem = new Uint8Array(wasm.memory.buffer);
-        mem.set(diskImage, ptr);
-        wasm.veecore_init_with(ptr, diskImage.length);
-        
-        try {
-            var bootResp = await loadBin('cpm-neo/bootloader.bin?' + Date.now());
-            bootBin = bootResp ? bootResp.data : null;
-        } catch (e) {}
-        if (bootBin) {
-            var bootPtr = wasm.veecore_alloc(bootBin.length);
-            var bootMem = new Uint8Array(wasm.memory.buffer);
-            bootMem.set(bootBin, bootPtr);
-            wasm.veecore_load_bootloader(bootPtr, bootBin.length);
-        }
-        
+
         (async () => {
             try {
                 var resp = await fetch('help.md?' + Date.now());
@@ -228,6 +267,16 @@ document.querySelector('.ctrl-bar-left .btn-danger')
     .addEventListener('click', resetMachine);
 document.getElementById('clock-freq')
     .addEventListener('change', (e) => setClockHz(e.target.value));
+
+// Storage mode: Disk (RAM-loaded) vs Flash (XIP).  Switching is a full reboot
+// of the machine with the matching disk image.
+document.getElementById('xip-mode')
+    .addEventListener('change', async (e) => {
+        if (!wasm) return;
+        await bootMachine(parseInt(e.target.value, 10));
+        updatePanels();
+        toggleRun();
+    });
 
 // Panel headers: toggle on click
 document.querySelectorAll('.panel-header')

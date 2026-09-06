@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 use crate::cpu::Cpu;
 use crate::dma;
+use crate::flash::{self, Flash};
 use crate::memory::Ram;
 use crate::peripherals;
 use crate::peripherals::{Disk, Kbd, Timer, Tty};
@@ -10,12 +11,19 @@ fn in_periph_range(addr: u32) -> bool {
     addr >= peripherals::DISK_BASE as u32
 }
 
+fn in_xip_range(addr: u32, flash: &Option<Flash>) -> bool {
+    match flash {
+        Some(f) => addr >= f.base && addr - f.base < f.size,
+        None => false,
+    }
+}
+
 pub const BUS_TX_RING_SIZE: usize = 32;
 
 #[derive(Clone, Copy)]
 pub struct BusTransaction {
     pub source_addr: u16,
-    pub dest_addr: u16,
+    pub dest_addr: u32,
     pub source_kind: u8,
     pub access_type: u8,
 }
@@ -26,6 +34,7 @@ pub struct Bus {
     pub tty: Tty,
     pub kbd: Kbd,
     pub disk: Disk,
+    pub flash: Option<Flash>,
     pub timer: Timer,
     pub clock_khz: u16,
     pub last_mem_addr: u32,
@@ -39,13 +48,19 @@ pub struct Bus {
 }
 
 impl Bus {
-    pub fn new(disk_image: Vec<u8>) -> Self {
+    pub fn new(disk_image: Vec<u8>, xip: bool) -> Self {
+        let flash = if xip {
+            Some(Flash::new(disk_image.clone(), flash::XIP_BASE, flash::XIP_SIZE))
+        } else {
+            None
+        };
         let mut bus = Bus {
             ram: Ram::new(),
             dma: dma::DmaController::new(),
             tty: Tty::new(),
             kbd: Kbd::new(),
             disk: Disk::new(disk_image),
+            flash,
             timer: Timer::new(),
             clock_khz: 100,
             last_mem_addr: 0,
@@ -62,7 +77,7 @@ impl Bus {
         bus
     }
 
-    pub fn push_tx(&mut self, dest_addr: u16, is_write: bool) {
+    pub fn push_tx(&mut self, dest_addr: u32, is_write: bool) {
         let i = self.tx_ring_head as usize;
         self.tx_ring[i] = BusTransaction {
             source_addr: self.tx_source_addr,
@@ -88,41 +103,41 @@ impl Bus {
         match addr {
             ba @ peripherals::DISK_BASE => {
                 let v = self.disk.read_byte();
-                self.push_tx(ba, false);
+                self.push_tx(ba as u32, false);
                 v
             }
             ba @ peripherals::KBD_BASE => {
                 let v = self.kbd.read();
-                self.push_tx(ba, false);
+                self.push_tx(ba as u32, false);
                 v
             }
             ba if ba == peripherals::KBD_STATUS => {
                 let v = self.kbd.status();
-                self.push_tx(ba, false);
+                self.push_tx(ba as u32, false);
                 v
             }
             ba @ peripherals::TIMER_BASE => {
-                self.push_tx(ba, false);
+                self.push_tx(ba as u32, false);
                 self.timer.read_cstr()
             }
             a if a == peripherals::TIMER_BASE + peripherals::TIMER_CNTR_O => {
-                self.push_tx(a, false);
+                self.push_tx(a as u32, false);
                 self.timer.counter as u8
             }
             a if a == peripherals::TIMER_BASE + peripherals::TIMER_CNTR_O + 1 => {
-                self.push_tx(a, false);
+                self.push_tx(a as u32, false);
                 (self.timer.counter >> 8) as u8
             }
             ba @ peripherals::CLK_BASE => {
-                self.push_tx(ba, false);
+                self.push_tx(ba as u32, false);
                 self.clock_khz as u8
             }
             a if a == peripherals::CLK_BASE + 1 => {
-                self.push_tx(a, false);
+                self.push_tx(a as u32, false);
                 (self.clock_khz >> 8) as u8
             }
             a if (peripherals::DMA_BASE..peripherals::DMA_BASE + 0x10).contains(&a) => {
-                self.push_tx(a, false);
+                self.push_tx(a as u32, false);
                 self.dma.read_byte(a as u32)
             }
             _ => 0,
@@ -134,6 +149,10 @@ impl Bus {
 impl BusAccess for Bus {
     fn read_w(&mut self, addr: u32) -> u32 {
         self.begin_access(word_align(addr), 4, false);
+        if in_xip_range(addr, &self.flash) {
+            let f = self.flash.as_ref().unwrap();
+            return f.read_w(addr - f.base);
+        }
         if in_periph_range(addr) {
             let mut val: u32 = 0;
             for i in 0..4 {
@@ -150,7 +169,10 @@ impl BusAccess for Bus {
 
     fn write_w(&mut self, addr: u32, data: u32, sel: u8) {
         self.begin_access(word_align(addr), sel.count_ones() as u8, true);
-        self.push_tx(word_align(addr) as u16, true);
+        self.push_tx(word_align(addr), true);
+        if in_xip_range(word_align(addr), &self.flash) {
+            return;
+        }
         if in_periph_range(addr) {
             let wa = word_align(addr);
             if wa as u16 == peripherals::DISK_BASE + peripherals::DISK_SECTOR_O {
@@ -212,7 +234,11 @@ pub struct Machine {
 
 impl Machine {
     pub fn new(disk_image: Vec<u8>) -> Self {
-        Machine { cpu: Cpu::new(0), bus: Bus::new(disk_image), cycles: 0, clock_hz: 100_000, rr_slot: 0 }
+        Self::new_with_mode(disk_image, false)
+    }
+
+    pub fn new_with_mode(disk_image: Vec<u8>, xip: bool) -> Self {
+        Machine { cpu: Cpu::new(0), bus: Bus::new(disk_image, xip), cycles: 0, clock_hz: 100_000, rr_slot: 0 }
     }
 
     pub fn set_clock_hz(&mut self, hz: u32) {
@@ -330,5 +356,25 @@ mod tests {
         assert!(s.contains("TPA"), "output missing startup banner: got {:?}", s);
         assert!(m.cpu.trap.is_none(), "CPU trapped unexpectedly: {:?} at pc={:x}", m.cpu.trap, m.cpu.pc);
         assert!(s.contains(">"), "ccp prompt missing");
+    }
+
+    #[test]
+    fn test_bootloader_xip() {
+        let disk_img = include_bytes!("../../cpm-neo/disk-xip.img");
+        let mut m = Machine::new_with_mode(disk_img.to_vec(), true);
+        for _ in 0..2000000 {
+            if m.cpu.trap.is_some() {
+                break;
+            }
+            if m.tick().is_err() {
+                break;
+            }
+        }
+        let output = m.bus.tty.drain();
+        let s = core::str::from_utf8(output).unwrap_or("");
+        assert!(s.contains("TPA"), "XIP output missing startup banner: got {:?}", s);
+        assert!(m.cpu.trap.is_none(), "XIP CPU trapped unexpectedly: {:?} at pc={:x}", m.cpu.trap, m.cpu.pc);
+        assert!(s.contains(">"), "XIP ccp prompt missing");
+        assert!(m.cpu.pc >= flash::XIP_BASE, "XIP expected pc in flash window, got pc={:x}", m.cpu.pc);
     }
 }

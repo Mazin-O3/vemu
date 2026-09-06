@@ -29,6 +29,10 @@
       </div>
       <div class="ctrl-bar-right">
         <div class="speed-group">
+          <select id="xip-mode" title="Storage backend that boot image comes from: Disk load the kernel/CCP into RAM; Flash executes them in place (XIP)">
+            <option value="0" selected>Disk</option>
+            <option value="1">Flash</option>
+          </select>
           <select id="clock-freq" title="System clock frequency">
             <option value="50000">50 KHz</option>
             <option value="100000" selected>100 KHz</option>
@@ -84,14 +88,14 @@
 
       <div class="panel p-disk">
         <div class="panel-header">
-          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> Disk
+          <span class="arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> <span id="disk-panel-title">Disk</span>
           <span class="badge hide-on-open" id="disk-state-badge">Idle</span>
         </div>
         <div class="panel-body">
           <div class="disk-status">
-            <div class="d-row"><span class="l2" title="Current sector LBA address">Sector</span><span class="l1" id="disk-sector">0</span></div>
-            <div class="d-row"><span class="l2" title="Byte offset within current sector">Offset</span><span class="warn" id="disk-offset">0</span></div>
-            <div class="d-row"><span class="l2" title="Disk controller state machine">State</span><span class="l3" id="disk-state">IDLE</span></div>
+            <div class="d-row" id="disk-row1"><span class="l2" id="disk-row1-label" title="Current sector LBA address">Sector</span><span class="l1" id="disk-sector">0</span></div>
+            <div class="d-row" id="disk-row2"><span class="l2" id="disk-row2-label" title="Byte offset within current sector">Offset</span><span class="warn" id="disk-offset">0</span></div>
+            <div class="d-row" id="disk-row3"><span class="l2" id="disk-row3-label" title="Disk controller state machine">State</span><span class="l3" id="disk-state">IDLE</span></div>
           </div>
           <div class="disk-box" id="disk-volumes"></div>
           <div class="disk-upload">
@@ -179,7 +183,9 @@
             <div class="mmap-row"><span class="mmap-name">CNTR</span><span class="mmap-addr">0xFF1C</span><span class="mmap-desc">Counter</span></div>
           </div>
 
-          <div class="mmap-row mmap-row-divider"><span class="mmap-name">DSP_DATA</span><span class="mmap-addr">0xFF10</span><span class="mmap-desc">Terminal output</span></div>
+          <div class="mmap-row-divider"></div>
+          <div class="mmap-row" id="mmap-flash-head"><span class="mmap-name">FLASH</span><span class="mmap-addr">0x10000</span><span class="mmap-desc"> Flash Memory</span></div>
+          <div class="mmap-row"><span class="mmap-name">DSP_DATA</span><span class="mmap-addr">0xFF10</span><span class="mmap-desc">Terminal output</span></div>
           <div class="mmap-row"><span class="mmap-name">KBD_DATA</span><span class="mmap-addr">0xFF08</span><span class="mmap-desc">Key data</span></div>
           <div class="mmap-row"><span class="mmap-name">KBD_STAT</span><span class="mmap-addr">0xFF0C</span><span class="mmap-desc">Key ready</span></div>
           <div class="mmap-row"><span class="mmap-name">SysCLK</span><span class="mmap-addr">0xFF14</span><span class="mmap-desc">Clock KHz</span></div>

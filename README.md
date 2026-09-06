@@ -27,7 +27,8 @@ Vemu emulates a custom 32-bit RISC-V microcomputer:
 | **CPU** | RV32I + M extension for hardware multiplication and division |
 | **RAM** | 64 KB, byte-addressable (`0x0000`–`0xFEFF`) |
 | **Memory-mapped I/O** | Top page `0xFF00`–`0xFFFF` |
-| **Storage** | 2 MB CP/M Neo disk|
+| **Storage** | 2 MB CP/M Neo disk |
+| **Flash (XIP)** | 2 MB read-only flash window `0x10000`–`0x307BFF`, kernel/CCP run in place |
 | **System clock** | Selectable 50 kHz – 1 MHz |
 
 
@@ -85,6 +86,13 @@ Read: `[0]` RUNNING (1 = busy), `[1]`–`[5]` readback of STREAM/SRC_INC/DST_INC
 ## CP/M Neo
 
 Vemu boots [CP/M Neo](https://github.com/Mazin-O3/cpm-neo), a CP/M-inspited operating system.
+
+### Boot Modes: Disk vs Flash
+
+The **Disk/Flash** selector chooses the boot medium; switching reboot the machine with it, and each mode keeps its own state.
+
+- **Disk** (default): the kernel and CCP are copied from disk into RAM at boot. Read-write storage — save programs normally.
+- **Flash**: the disk image is exposed as read-only flash and the kernel/CCP run in place from the flash window (`0x10000`–`0x307BFF`, 2079 KB). The flash image is read-only — programs can't modify the running code — while the disk controller still handles file/volume storage independently.
 
 # Vemu Apps
 
