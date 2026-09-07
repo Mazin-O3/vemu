@@ -328,7 +328,7 @@ document.getElementById('ctrl-bar')
         }
     });
 
-// Resize → re-render terminal
+// Resize -> re-render terminal
 window.addEventListener('resize', renderTerminal);
 
 

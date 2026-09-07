@@ -28,7 +28,7 @@ Vemu emulates a custom 32-bit RISC-V microcomputer:
 | **RAM** | 64 KB, byte-addressable (`0x0000`–`0xFEFF`) |
 | **Memory-mapped I/O** | Top page `0xFF00`–`0xFFFF` |
 | **Storage** | 2 MB CP/M Neo disk |
-| **Flash (XIP)** | 2 MB read-only flash window `0x10000`–`0x307BFF`, kernel/CCP run in place |
+| **Flash (XIP)** | Read-only flash window at `0x10000` extending over the loaded disk image; kernel/CCP run in place |
 | **System clock** | Selectable 50 kHz – 1 MHz |
 
 
@@ -92,12 +92,12 @@ Vemu boots [CP/M Neo](https://github.com/Mazin-O3/cpm-neo), a CP/M-inspited oper
 The **Disk/Flash** selector chooses the boot medium; switching reboot the machine with it, and each mode keeps its own state.
 
 - **Disk** (default): the kernel and CCP are copied from disk into RAM at boot. Read-write storage — save programs normally.
-- **Flash**: the disk image is exposed as read-only flash and the kernel/CCP run in place from the flash window (`0x10000`–`0x307BFF`, 2079 KB). The flash image is read-only — programs can't modify the running code — while the disk controller still handles file/volume storage independently.
+- **Flash**: the loaded disk image is exposed as read-only flash and the kernel/CCP run in place from the flash window starting at `0x10000`. The window covers the disk image itself, so it grows/shrinks with the loaded image. The flash image is read-only — programs can't modify the running code — while the disk controller still handles file/volume storage independently.
 
 # Vemu Apps
 
-Vemu bundles two development tools: **PICO**, a text editor, and **ASM**, a
-RISC-V assembler. Together they form an edit, assemble, and run workflow.
+Vemu bundles demo programs built on the CP/M Neo SDK: **PICO**, a screen-based
+text editor, plus **MBROT** and **SNAKE**.
 
 ## PICO
 PICO is a full-screen text editor built on the CP/M Neo SDK. It can open, edit, and save text files.
@@ -123,83 +123,6 @@ PICO                  Start an empty, unnamed buffer
 | Any other key | Insert or type text |
 
 
-## ASM
-
-A two-pass assembler supporting the **RV32I** instruction set plus the **M**
-(multiply/divide) extension. Output is a flat `.COM` executable.
-
-### Usage
-
-```text
-ASM <FILE.S>
-ASM <FILE.ASM>
-```
-
-### Syscall interface
-
-Programs communicate with the operating system through a syscall table whose
-address the kernel publishes in environment slot 0 (`ENV_SYSCALL_PTR`); the
-assembler exposes it as `%SYSCALL`. Please refer to the [Syscall reference](https://github.com/Mazin-O3/cpm-neo/blob/main/docs/syscall-reference.md) for the table layout.
-
-### Program skeleton
-
-All `.COM` programs **must** begin at `.org 0x100`.
-
-```asm
-; HELLO.S
-
-.org 0x100
-
-main:
-    li   a0, 1
-    la   a1, hello
-    li   a2, 14
-
-    la   t1, %SYSCALL
-    lw   t2, 8(t1)          ; syscall slot 2: write
-    jalr ra, 0(t2)
-
-    li   a0, 0
-    la   t1, %SYSCALL
-    lw   t2, 16(t1)         ; syscall slot 4: exit
-    jalr ra, 0(t2)
-
-hello:
-    .asciiz "Hello, World!\n"
-```
-
-### Instructions and directives
-
-| Category | Items |
-| --- | --- |
-| **RV32I** | `lb lh lw lbu lhu sb sh sw`<br><br>`addi slti sltiu xori ori andi slli srli srai`<br><br>`add sub sll slt sltu xor srl sra or and`<br><br>`beq bne blt bge bltu bgeu`<br><br>`jal jalr`<br><br>`lui auipc` |
-| **M Extension** | `mul mulh mulhsu mulhu div divu rem remu` |
-| **Pseudo** | `li`, `la`, `mv`, `nop`, `j`, `call`, `jr`, `ret` |
-| **Directives** | `.org`, `.byte`, `.word`, `.ascii`, `.asciiz`, `.asciz`, `.align`, `.equ`, `.space`, `.fill`, `.text`, `.data`, `.section` |
-
-**Directives**
-
-| Directive | Description |
-| --- | --- |
-| `.org ADDR` | Set the current output address |
-| `.byte V[, V...]` | Emit raw bytes |
-| `.word V[, V...]` | Emit 32-bit words |
-| `.ascii "STR"` | Emit string bytes (no terminator) |
-| `.asciiz "STR"` | Emit string bytes plus a null terminator |
-| `.asciz "STR"` | Alias of `.asciiz` |
-| `.align N` | Pad with zeros to a `2^N` boundary |
-| `.equ NAME, V` | Define a constant (no forward references) |
-| `.space COUNT [, FILL]` | Reserve `COUNT` bytes, each set to `FILL` (default `0`). Handy for allocating stacks and buffers |
-| `.fill COUNT [, SIZE] [, VALUE]` | Emit `COUNT` copies of `VALUE` written as `SIZE` little-endian bytes (defaults `SIZE=1`, `VALUE=0`) |
-| `.text` / `.data` / `.section` | Accepted for compatibility; ignored (single flat output segment) |
-
-**Limits**
-
-- Maximum 128 labels
-- Maximum 128 characters per source line
-- `.equ` does not allow forward references
-```
-
 ---
 
 ## Running
@@ -213,14 +136,18 @@ For local development, `run.sh` serves the site on port 8080. Its optional `buil
 
 ## Regenerating the bundled disk image
 
-`cpm-neo/bootloader.bin` and `cpm-neo/disk.img` are produced by the [CP/M Neo](https://github.com/Mazin-O3/cpm-neo) build:
+`cpm-neo/bootloader.bin`, `cpm-neo/disk.img`, and `cpm-neo/disk-xip.img` are
+produced by the [CP/M Neo](https://github.com/Mazin-O3/cpm-neo) build (the
+XIP image is `sysgen new --xip`'s output, renamed):
 
 ```sh
 git clone https://github.com/Mazin-O3/cpm-neo
 cd cpm-neo
 make -C sysgen
-./sysgen/build/sysgen new --disk-size=2048K --mem=64K --platform=vemu
+./sysgen/build/sysgen new --disk-size=2048K --platform=vemu
 cp sysgen/build/bootloader.bin sysgen/build/disk.img /path/to/vemu/cpm-neo/
+./sysgen/build/sysgen new --disk-size=2048K --platform=vemu --xip
+cp sysgen/build/disk.img /path/to/vemu/cpm-neo/disk-xip.img
 ```
 
 ## License

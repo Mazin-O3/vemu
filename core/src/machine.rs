@@ -50,7 +50,7 @@ pub struct Bus {
 impl Bus {
     pub fn new(disk_image: Vec<u8>, xip: bool) -> Self {
         let flash = if xip {
-            Some(Flash::new(disk_image.clone(), flash::XIP_BASE, flash::XIP_SIZE))
+            Some(Flash::new(disk_image.clone(), flash::XIP_BASE))
         } else {
             None
         };

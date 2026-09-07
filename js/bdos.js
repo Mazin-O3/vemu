@@ -8,13 +8,13 @@ import {
 
 let uploadFiles = [];
 
-/* ── Sector 0 layout (v2 — mirrors kernel_abi.h) ──────── */
+/* ── Sector 0 layout (v2 — mirrors disk_format.h) ──── */
 var S0_MAGIC = 0x000;
 var DISK_MAGIC = 0x4350;
 var DISK_SECTOR_SIZE = 512;
 var S0_KERN_SECS = 0x018;
 
-/* ── VMAP layout (sector 1 — mirrors kernel_abi.h) ────── */
+/* ── VMAP layout (sector 1 — mirrors disk_format.h) ──── */
 var VMAP_LBA = 1;
 var VMAP_NUM_BLOCKS = 0x000;
 var VMAP_BLOCK_BASE = 0x002;

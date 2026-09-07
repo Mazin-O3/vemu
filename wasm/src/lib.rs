@@ -6,7 +6,7 @@ extern crate alloc;
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicU32, Ordering};
 use veecore::decode;
-use veecore::flash::{self, XIP_BASE};
+use veecore::flash::XIP_BASE;
 use veecore::machine::{Machine, BUS_TX_RING_SIZE};
 use veecore::peripherals::{DiskState, DISK_BASE, KBD_BASE, DSP_BASE, CLK_BASE, TIMER_BASE, DMA_BASE};
 
@@ -63,7 +63,13 @@ pub extern "C" fn veecore_xip_mode() -> u32 {
 pub extern "C" fn veecore_xip_base() -> u32 { XIP_BASE }
 
 #[no_mangle]
-pub extern "C" fn veecore_xip_len() -> u32 { flash::XIP_SIZE }
+pub extern "C" fn veecore_xip_len() -> u32 {
+    let m = unsafe { MACHINE.as_ref().unwrap() };
+    match &m.bus.flash {
+        Some(f) => f.size,
+        None => 0,
+    }
+}
 
 #[no_mangle]
 pub extern "C" fn veecore_flash_byte(addr: u32) -> u8 {

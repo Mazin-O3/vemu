@@ -5,15 +5,15 @@ use core::cmp;
 ///
 /// Mirrors cpm-neo/platform/vemu/config.sh:
 ///   XIP_BASE = flash window base address in the CPU's address space
-///   XIP_SIZE = window size in bytes (the platform's max disk size)
 ///
-/// The window is a 1:1 read-only mapping of the disk image: the byte at
-/// CPU address `addr` in the window is image byte `addr - XIP_BASE`.  The
-/// kernel and CCP execute in place from this window (see the XIP linker
-/// scripts in cpm-neo), so the flash must look like plain linear memory to
-/// instruction fetches and data loads.
+/// There is no configured XIP_SIZE: the window is exactly the disk image —
+/// the byte at CPU address `addr` in the window is image byte `addr - XIP_BASE`.
+///
+/// The window is a 1:1 read-only mapping of the disk image.  The kernel and
+/// CCP execute in place from this window (see the XIP linker scripts in
+/// cpm-neo), so the flash must look like plain linear memory to instruction
+/// fetches and data loads.
 pub const XIP_BASE: u32 = 0x10000;
-pub const XIP_SIZE: u32 = 0x207C00;
 
 /// Read-only XIP flash.  A private snapshot of the boot image, deliberately
 /// separate from the Disk controller: disk sector writes (file uploads, the
@@ -25,7 +25,9 @@ pub struct Flash {
 }
 
 impl Flash {
-    pub fn new(image: Vec<u8>, base: u32, size: u32) -> Self {
+    /// Size the window to the disk image itself.
+    pub fn new(image: Vec<u8>, base: u32) -> Self {
+        let size = image.len() as u32;
         Flash { image, base, size }
     }
 
