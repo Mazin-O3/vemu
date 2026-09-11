@@ -2,7 +2,7 @@
 #include "string.h"
 #include "ctype.h"
 #include "stdlib.h"
-#include "../lib/terminal.h"
+#include <ansi.h>
 #include "../lib/delay.h"
 
 #define W 20
@@ -16,12 +16,14 @@ static int fx, fy, dir, score;
 static void spawn_food(void)
 {
     int occupied;
+
     do
     {
         fx = rand() % W;
         fy = rand() % H;
-      
+
         occupied = 0;
+
         for (int i = qh;; i = (i + 1) % MAX)
         {
             if (qx[i] == fx && qy[i] == fy)
@@ -29,6 +31,7 @@ static void spawn_food(void)
                 occupied = 1;
                 break;
             }
+
             if (i == qt)
                 break;
         }
@@ -39,10 +42,12 @@ int main(void)
 {
     int x, y;
     char ch;
+
     printf(CSI_CLS CSI_HOME);
     printf(CSI_HIDE);
 
     int playing = 1;
+
     while (playing)
     {
         for (x = 0; x < W + 2; x++)
@@ -52,6 +57,7 @@ int main(void)
             printf(CSI_CUP, H + 2, x + 1);
             putchar('#');
         }
+
         for (y = 0; y < H + 2; y++)
         {
             printf(CSI_CUP, y + 1, 1);
@@ -99,11 +105,13 @@ int main(void)
         printf("Score: %d                 ", score);
 
         int dead = 0;
+
         while (!dead)
         {
             if (peekchar())
             {
                 int k = toupper(getchar());
+
                 if (k == 'W')
                 {
                     if (dir != 1)
@@ -142,6 +150,7 @@ int main(void)
             printf(CSI_CUP, qy[qh] + 2, qx[qh] + 2);
             putchar('o');
             int nh = (qh + MAX - 1) % MAX;
+
             qx[nh] = nx;
             qy[nh] = ny;
             qh = nh;
@@ -176,6 +185,7 @@ int main(void)
         printf(CSI_CUP, H / 2 + 5, W / 2 - 6);
         printf("Try again (Y/N) ");
         printf(CSI_SHOW);
+
         do
         {
             ch = (char)toupper(getchar());

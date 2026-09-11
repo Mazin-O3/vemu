@@ -2,7 +2,7 @@
 #define PICO_H
 
 #include <stdarg.h>
-#include "../lib/terminal.h"
+#include <ansi.h>
 #include "fs.h"
 #include "stdio.h"
 #include "string.h"
@@ -15,6 +15,10 @@
 #define PICO_ROWS (SCREEN_ROWS - 3)
 #define BATCH_LEN 3072
 #define MAX_VISIBLE_LINE 256
+
+/* pico's assumed console geometry */
+#define SCREEN_WIDTH 80
+#define SCREEN_ROWS  24
 
 
 /* Key codes */
