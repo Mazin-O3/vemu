@@ -10,29 +10,26 @@ export let wasm = null;
 export let running = false;
 export let xipMode = 0;
 let rafId = null;
-let ticksPerFrame = Math.round(parseInt(document.getElementById('clock-freq')
-    .value, 10) / 60);
+let ticksPerFrame = Math.round(parseInt(document.getElementById('clock-freq').value, 10) / 60);
 let panelTime = 0;
 let bootBusy = false;
 const diskCache = {};
 export let bootBin = null;
 
-window.addEventListener('unhandledrejection', function (e) {
+window.addEventListener('unhandledrejection', (e) => {
     e.preventDefault();
 });
 
 export function toggleRun() {
     if (!wasm) return;
     running = !running;
-    document.getElementById('btn-run')
-        .innerHTML = running ?
-        '<span><svg viewBox="0 0 12 12" width="14" height="14"><rect x="3" y="2" width="2" height="8" rx=".5" fill="currentColor"/><rect x="7" y="2" width="2" height="8" rx=".5" fill="currentColor"/></svg></span>' :
-        '<span><svg viewBox="0 0 12 12" width="14" height="14"><path d="M4 2v8l6-4z" fill="currentColor"/></svg></span>';
+    document.getElementById('btn-run').innerHTML = running
+        ? '<span><svg viewBox="0 0 12 12" width="14" height="14"><rect x="3" y="2" width="2" height="8" rx=".5" fill="currentColor"/><rect x="7" y="2" width="2" height="8" rx=".5" fill="currentColor"/></svg></span>'
+        : '<span><svg viewBox="0 0 12 12" width="14" height="14"><path d="M4 2v8l6-4z" fill="currentColor"/></svg></span>';
     if (running && rafId === null) {
         rafId = requestAnimationFrame(mainLoop);
     }
-    document.getElementById('btn-step')
-        .disabled = running;
+    document.getElementById('btn-step').disabled = running;
 }
 
 function setClockHz(hz) {
@@ -51,12 +48,14 @@ function step() {
 async function resetMachine() {
     if (!wasm) return;
     running = false;
-    if (rafId !== null) { cancelAnimationFrame(rafId);
-        rafId = null; }
+    if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+    }
     wasm.veecore_reset();
     if (bootBin) {
-        var bootPtr = wasm.veecore_alloc(bootBin.length);
-        var bootMem = new Uint8Array(wasm.memory.buffer);
+        const bootPtr = wasm.veecore_alloc(bootBin.length);
+        const bootMem = new Uint8Array(wasm.memory.buffer);
         bootMem.set(bootBin, bootPtr);
         wasm.veecore_load_bootloader(bootPtr, bootBin.length);
     }
@@ -70,12 +69,14 @@ function toggle(el) {
     const body = el.nextElementSibling;
     body.classList.toggle('open');
     el.classList.toggle('open');
-    el.querySelector('.arrow')
-        .classList.toggle('open');
+    el.querySelector('.arrow').classList.toggle('open');
 }
 
 function mainLoop() {
-    if (!running) { rafId = null; return; }
+    if (!running) {
+        rafId = null;
+        return;
+    }
     try {
         wasm.veecore_tick_n(ticksPerFrame);
         flushTTY();
@@ -94,8 +95,8 @@ function mainLoop() {
 }
 
 function fnv1a(data) {
-    var h = 0x811c9dc5;
-    for (var i = 0; i < data.length; i++) {
+    let h = 0x811c9dc5;
+    for (let i = 0; i < data.length; i++) {
         h ^= data[i];
         h = (h * 0x01000193) >>> 0;
     }
@@ -113,14 +114,16 @@ async function bootMachine(mode) {
     try {
         if (!wasm) return '';
         running = false;
-        if (rafId !== null) { cancelAnimationFrame(rafId);
-            rafId = null; }
+        if (rafId !== null) {
+            cancelAnimationFrame(rafId);
+            rafId = null;
+        }
 
-        var isXip = mode ? 1 : 0;
+        const isXip = mode ? 1 : 0;
         xipMode = isXip;
 
-        var imgPath = isXip ? 'cpm-neo/disk-xip.img' : 'cpm-neo/disk.img';
-        var resp = diskCache[imgPath];
+        const imgPath = isXip ? 'cpm-neo/disk-xip.img' : 'cpm-neo/disk.img';
+        let resp = diskCache[imgPath];
         if (!resp) {
             try { resp = await loadBin(imgPath + '?' + Date.now()); } catch (e) {}
             if (!resp) throw new Error('No disk image: ' + imgPath);
@@ -132,26 +135,26 @@ async function bootMachine(mode) {
         // The mode is prefixed into the key: both disk flavors share the same
         // Last-Modified timestamp (staged together), so without it each mode
         // would resolve to the same DB and load the wrong image on switch.
-        var stamp = resp.lastModified;
+        let stamp = resp.lastModified;
         if (!stamp) stamp = fnv1a(resp.data);
-        var dbName = diskDBName(isXip + ':' + stamp);
+        const dbName = diskDBName(isXip + ':' + stamp);
         setDiskDBName(dbName);
 
-        var diskImage = null;
+        let diskImage = null;
         try { diskImage = await loadDiskFromDB(dbName); } catch (e) { diskImage = null; }
         if (!diskImage) {
             diskImage = resp.data;
             try { await saveDiskToDB(diskImage, dbName); } catch (e) {}
         }
 
-        var ptr = wasm.veecore_alloc(diskImage.length);
-        var mem = new Uint8Array(wasm.memory.buffer);
+        const ptr = wasm.veecore_alloc(diskImage.length);
+        const mem = new Uint8Array(wasm.memory.buffer);
         mem.set(diskImage, ptr);
         wasm.veecore_init_xip(ptr, diskImage.length, isXip);
 
         if (bootBin) {
-            var bootPtr = wasm.veecore_alloc(bootBin.length);
-            var bootMem = new Uint8Array(wasm.memory.buffer);
+            const bootPtr = wasm.veecore_alloc(bootBin.length);
+            const bootMem = new Uint8Array(wasm.memory.buffer);
             bootMem.set(bootBin, bootPtr);
             wasm.veecore_load_bootloader(bootPtr, bootBin.length);
         }
@@ -159,8 +162,7 @@ async function bootMachine(mode) {
         resetPanelsMode();
         resetTerminal();
         renderTerminal();
-        setClockHz(document.getElementById('clock-freq')
-            .value);
+        setClockHz(document.getElementById('clock-freq').value);
         updatePanels();
         return dbName;
     } finally {
@@ -170,38 +172,36 @@ async function bootMachine(mode) {
 
 async function initWasm() {
     try {
-        var resp = await fetch('veewasm.wasm?' + Date.now());
+        const resp = await fetch('veewasm.wasm?' + Date.now());
         if (!resp.ok) throw new Error('wasm HTTP ' + resp.status);
-        var bytes = await resp.arrayBuffer();
-        var mod = await WebAssembly.instantiate(bytes, {});
+        const bytes = await resp.arrayBuffer();
+        const mod = await WebAssembly.instantiate(bytes, {});
         wasm = mod.instance.exports;
 
-        var bootResp = null;
+        let bootResp = null;
         try { bootResp = await loadBin('cpm-neo/bootloader.bin?' + Date.now()); } catch (e) {}
         bootBin = bootResp ? bootResp.data : null;
 
-        var mode = parseInt(document.getElementById('xip-mode')
-            .value, 10);
-        var dbName = await bootMachine(mode);
+        const mode = parseInt(document.getElementById('xip-mode').value, 10);
+        const dbName = await bootMachine(mode);
         cleanupOldDatabases(dbName);
 
         (async () => {
             try {
-                var resp = await fetch('help.md?' + Date.now());
+                const resp = await fetch('help.md?' + Date.now());
                 if (!resp.ok) return;
-                var md = await resp.text();
-                var html = marked.parse(md);
-                var doc = new DOMParser()
-                    .parseFromString(html, 'text/html');
-                var container = document.getElementById('help-body');
+                const md = await resp.text();
+                const html = marked.parse(md);
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const container = document.getElementById('help-body');
                 if (!container) return;
                 container.innerHTML = '';
-                var children = [...doc.body.children];
-                var sectionIdx = 0;
-                var currentBody = null;
-                var introDone = false;
-                
-                for (var node of children) {
+                const children = [...doc.body.children];
+                let sectionIdx = 0;
+                let currentBody = null;
+                let introDone = false;
+
+                for (const node of children) {
                     if (node.tagName === 'H1') {
                         node.className = 'help-title';
                         container.appendChild(node);
@@ -211,8 +211,8 @@ async function initWasm() {
                         introDone = true;
                     } else if (node.tagName === 'H2') {
                         if (currentBody) container.appendChild(currentBody);
-                        var id = 'help-s' + sectionIdx++;
-                        var sub = document.createElement('div');
+                        const id = 'help-s' + sectionIdx++;
+                        const sub = document.createElement('div');
                         sub.className = 'sub-head';
                         sub.dataset.target = id;
                         sub.innerHTML = '<span class="arrow" id="' + id + '-arrow"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span> ' + node.textContent;
@@ -221,8 +221,10 @@ async function initWasm() {
                         currentBody.id = id;
                         currentBody.className = 'help-sub-body hidden';
                     } else if (node.tagName === 'P' && node.textContent.includes('Created by')) {
-                        if (currentBody) { container.appendChild(currentBody);
-                            currentBody = null; }
+                        if (currentBody) {
+                            container.appendChild(currentBody);
+                            currentBody = null;
+                        }
                         node.classList.add('help-about');
                         container.appendChild(node);
                     } else if (currentBody) {
@@ -237,23 +239,26 @@ async function initWasm() {
                 console.error('Help load error:', e);
             }
         })();
-        
+
         initRegGrid();
-        setClockHz(document.getElementById('clock-freq')
-            .value);
+        setClockHz(document.getElementById('clock-freq').value);
         updatePanels();
-        
+
         if (window.innerWidth >= 768) {
-            var helpHdr = document.querySelector('.p-help .panel-header');
+            const helpHdr = document.querySelector('.p-help .panel-header');
             if (helpHdr && !helpHdr.classList.contains('open')) toggle(helpHdr);
         }
-        
+
         document.fonts.ready.then(() => {
             renderTerminal();
-            setInterval(() => { if (running && performance.now() - lastActivity > 500) { toggleCursor();
-                    renderTerminal(); } }, 500);
+            setInterval(() => {
+                if (running && performance.now() - lastActivity > 500) {
+                    toggleCursor();
+                    renderTerminal();
+                }
+            }, 500);
         });
-        
+
     } catch (e) {
         console.error('Vemu init error:', e);
     }
@@ -262,82 +267,68 @@ async function initWasm() {
 // ── Setup event listeners ──────────────────────────────────────────────────
 
 // Controls
-document.getElementById('btn-run')
-    .addEventListener('click', toggleRun);
-document.getElementById('btn-step')
-    .addEventListener('click', step);
-document.querySelector('.ctrl-bar-left .btn-danger')
-    .addEventListener('click', resetMachine);
-document.getElementById('clock-freq')
-    .addEventListener('change', (e) => setClockHz(e.target.value));
+document.getElementById('btn-run').addEventListener('click', toggleRun);
+document.getElementById('btn-step').addEventListener('click', step);
+document.querySelector('.ctrl-bar-left .btn-danger').addEventListener('click', resetMachine);
+document.getElementById('clock-freq').addEventListener('change', (e) => setClockHz(e.target.value));
 
 // Storage mode: Disk (RAM-loaded) vs Flash (XIP).  Switching is a full reboot
 // of the machine with the matching disk image.
-document.getElementById('xip-mode')
-    .addEventListener('change', async (e) => {
-        if (!wasm) return;
-        await bootMachine(parseInt(e.target.value, 10));
-        updatePanels();
-        toggleRun();
-    });
+document.getElementById('xip-mode').addEventListener('change', async (e) => {
+    if (!wasm) return;
+    await bootMachine(parseInt(e.target.value, 10));
+    updatePanels();
+    toggleRun();
+});
 
 // Panel headers: toggle on click
-document.querySelectorAll('.panel-header')
-    .forEach(el => {
-        el.addEventListener('click', () => toggle(el));
-    });
+document.querySelectorAll('.panel-header').forEach(el => {
+    el.addEventListener('click', () => toggle(el));
+});
 
 // Sub-heads: toggle sections via event delegation
-document.querySelector('.side-panels')
-    .addEventListener('click', (e) => {
-        var el = e.target.closest('.sub-head');
-        if (!el) return;
-        var id = el.dataset.target;
-        if (id) {
-            var body = document.getElementById(id);
-            var arrow = document.getElementById(id + '-arrow');
-            if (body) body.classList.toggle('hidden');
-            if (arrow) arrow.classList.toggle('open');
-        }
-    });
+document.querySelector('.side-panels').addEventListener('click', (e) => {
+    const el = e.target.closest('.sub-head');
+    if (!el) return;
+    const id = el.dataset.target;
+    if (id) {
+        const body = document.getElementById(id);
+        const arrow = document.getElementById(id + '-arrow');
+        if (body) body.classList.toggle('hidden');
+        if (arrow) arrow.classList.toggle('open');
+    }
+});
 
 // Upload zone
-document.getElementById('upload-zone')
-    .addEventListener('click', () => {
-        document.getElementById('file-input')
-            .click();
-    });
-document.getElementById('upload-zone')
-    .addEventListener('dragover', onDragOver);
-document.getElementById('upload-zone')
-    .addEventListener('dragleave', (e) => {
-        e.target.classList.remove('dragover');
-    });
-document.getElementById('upload-zone')
-    .addEventListener('drop', onDrop);
+document.getElementById('upload-zone').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+});
+document.getElementById('upload-zone').addEventListener('dragover', onDragOver);
+document.getElementById('upload-zone').addEventListener('dragleave', (e) => {
+    e.target.classList.remove('dragover');
+});
+document.getElementById('upload-zone').addEventListener('drop', onDrop);
 
 // File input
-document.getElementById('file-input')
-    .addEventListener('change', onFilesPicked);
+document.getElementById('file-input').addEventListener('change', onFilesPicked);
 
 // Ctrl-bar blur
-document.getElementById('ctrl-bar')
-    .addEventListener('mouseleave', () => {
-        if (document.activeElement && (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'INPUT')) {
-            document.activeElement.blur();
-        }
-    });
+document.getElementById('ctrl-bar').addEventListener('mouseleave', () => {
+    if (document.activeElement && (document.activeElement.tagName === 'BUTTON' || document.activeElement.tagName === 'INPUT')) {
+        document.activeElement.blur();
+    }
+});
 
 // Resize -> re-render terminal
 window.addEventListener('resize', renderTerminal);
 
-
-
 // ── Bootstrap ──────────────────────────────────────────────────────────────
 
 initWasm()
-    .then(function () { setTimeout(toggleRun, 100);
-        renderFileList(); })
-    .catch(function (e) {
+    .then(() => {
+        setTimeout(toggleRun, 100);
+        renderFileList();
+    })
+    .catch((e) => {
         console.error('Fatal:', e);
     });

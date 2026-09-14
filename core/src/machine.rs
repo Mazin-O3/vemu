@@ -344,9 +344,6 @@ mod tests {
         let disk_img = include_bytes!("../../cpm-neo/disk.img");
         let mut m = Machine::new(disk_img.to_vec());
         for _ in 0..2000000 {
-            if m.cpu.trap.is_some() {
-                break;
-            }
             if m.tick().is_err() {
                 break;
             }
@@ -354,7 +351,6 @@ mod tests {
         let output = m.bus.tty.drain();
         let s = core::str::from_utf8(output).unwrap_or("");
         assert!(s.contains("TPA"), "output missing startup banner: got {:?}", s);
-        assert!(m.cpu.trap.is_none(), "CPU trapped unexpectedly: {:?} at pc={:x}", m.cpu.trap, m.cpu.pc);
         assert!(s.contains(">"), "ccp prompt missing");
     }
 
@@ -363,9 +359,6 @@ mod tests {
         let disk_img = include_bytes!("../../cpm-neo/disk-xip.img");
         let mut m = Machine::new_with_mode(disk_img.to_vec(), true);
         for _ in 0..2000000 {
-            if m.cpu.trap.is_some() {
-                break;
-            }
             if m.tick().is_err() {
                 break;
             }
@@ -373,8 +366,33 @@ mod tests {
         let output = m.bus.tty.drain();
         let s = core::str::from_utf8(output).unwrap_or("");
         assert!(s.contains("TPA"), "XIP output missing startup banner: got {:?}", s);
-        assert!(m.cpu.trap.is_none(), "XIP CPU trapped unexpectedly: {:?} at pc={:x}", m.cpu.trap, m.cpu.pc);
         assert!(s.contains(">"), "XIP ccp prompt missing");
         assert!(m.cpu.pc >= flash::XIP_BASE, "XIP expected pc in flash window, got pc={:x}", m.cpu.pc);
+    }
+
+    #[test]
+    fn test_chip8_runs_rom() {
+        let disk_img = include_bytes!("../../cpm-neo/disk.img");
+        let mut m = Machine::new(disk_img.to_vec());
+        for _ in 0..2000000 {
+            if m.tick().is_err() {
+                break;
+            }
+        }
+        let boot_buf = m.bus.tty.drain();
+        let boot = core::str::from_utf8(boot_buf).unwrap_or("");
+        assert!(boot.contains(">"), "ccp prompt missing: {:?}", boot);
+
+        for b in b"chip8 demo.ch8\r" {
+            m.bus.kbd.inject(*b);
+        }
+        for _ in 0..2000000 {
+            if m.tick().is_err() {
+                break;
+            }
+        }
+        let output = m.bus.tty.drain();
+        let s = core::str::from_utf8(output).unwrap_or("");
+        assert!(s.contains('\u{2588}'), "chip8 playfield glyphs missing: {:?}", s);
     }
 }

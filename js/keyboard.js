@@ -2,15 +2,15 @@ import { wasm, running } from './main.js';
 import { flushTTY } from './terminal.js';
 
 const escSeq = {
-    ArrowUp: [0x1B, 0x5B, 0x41]
-    , ArrowDown: [0x1B, 0x5B, 0x42]
-    , ArrowRight: [0x1B, 0x5B, 0x43]
-    , ArrowLeft: [0x1B, 0x5B, 0x44]
-    , Home: [0x1B, 0x5B, 0x31, 0x7E]
-    , End: [0x1B, 0x5B, 0x34, 0x7E]
-    , PageUp: [0x1B, 0x5B, 0x35, 0x7E]
-    , PageDown: [0x1B, 0x5B, 0x36, 0x7E]
-, };
+    ArrowUp: [0x1B, 0x5B, 0x41],
+    ArrowDown: [0x1B, 0x5B, 0x42],
+    ArrowRight: [0x1B, 0x5B, 0x43],
+    ArrowLeft: [0x1B, 0x5B, 0x44],
+    Home: [0x1B, 0x5B, 0x31, 0x7E],
+    End: [0x1B, 0x5B, 0x34, 0x7E],
+    PageUp: [0x1B, 0x5B, 0x35, 0x7E],
+    PageDown: [0x1B, 0x5B, 0x36, 0x7E],
+};
 
 const termInput = document.getElementById('term-input');
 
@@ -37,25 +37,22 @@ termInput.addEventListener('input', () => {
     flushTTY();
 });
 
-document.getElementById('term-canvas')
-    .addEventListener('click', () => { termInput.focus(); });
-document.getElementById('term-canvas')
-    .addEventListener('touchstart', () => { termInput.focus(); });
+document.getElementById('term-canvas').addEventListener('click', () => { termInput.focus(); });
+document.getElementById('term-canvas').addEventListener('touchstart', () => { termInput.focus(); });
 
 document.addEventListener('keydown', (e) => {
     if (!wasm || !running) return;
-    
+
     let code = 0;
-    
+
     if (e.ctrlKey && e.key.length === 1) {
-        const c = e.key.toUpperCase()
-            .charCodeAt(0);
+        const c = e.key.toUpperCase().charCodeAt(0);
         if (c >= 0x41 && c <= 0x5A) {
             code = c - 0x40;
             e.preventDefault();
         }
     }
-    
+
     const tag = document.activeElement?.tagName || '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
         if (code) {
@@ -72,7 +69,7 @@ document.addEventListener('keydown', (e) => {
         return;
     }
     if (document.activeElement) document.activeElement.blur();
-    
+
     if (!code) {
         if (e.key.length === 1 && e.key.charCodeAt(0) >= 0x20 && e.key.charCodeAt(0) < 0x7F) {
             code = e.key.charCodeAt(0);
@@ -92,7 +89,7 @@ document.addEventListener('keydown', (e) => {
             flushTTY();
         }
     }
-    
+
     if (code) {
         wasm.veecore_kbd_inject(code);
         flushTTY();

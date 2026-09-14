@@ -1,28 +1,23 @@
 import { wasm, running } from './main.js';
 
-const TERM_COLS = 80
-    , TERM_ROWS = 24;
+const TERM_COLS = 80, TERM_ROWS = 24;
 
 let termScreen = [];
 let termAttr = [];
 for (let r = 0; r < TERM_ROWS; r++) {
-    termScreen[r] = new Array(TERM_COLS)
-        .fill(' ');
-    termAttr[r] = new Array(TERM_COLS)
-        .fill(0);
+    termScreen[r] = new Array(TERM_COLS).fill(' ');
+    termAttr[r] = new Array(TERM_COLS).fill(0);
 }
-let curRow = 0
-    , curCol = 0;
-let scrollTop = 0
-    , scrollBottom = TERM_ROWS - 1;
+let curRow = 0, curCol = 0;
+let scrollTop = 0, scrollBottom = TERM_ROWS - 1;
 let escRemain = [];
-let charW = 10
-    , charH = 20;
-let cursorVisible = true
-    , cursorHidden = false;
+let utfRemain = [];
+let charW = 10, charH = 20;
+let cursorVisible = true, cursorHidden = false;
 
 let currentAttr = 0;
 export let lastActivity = 0;
+
 export function toggleCursor() {
     cursorVisible = !cursorVisible;
 }
@@ -31,16 +26,15 @@ export function resetTerminal() {
     termScreen = [];
     termAttr = [];
     for (let r = 0; r < TERM_ROWS; r++) {
-        termScreen[r] = new Array(TERM_COLS)
-            .fill(' ');
-        termAttr[r] = new Array(TERM_COLS)
-            .fill(0);
+        termScreen[r] = new Array(TERM_COLS).fill(' ');
+        termAttr[r] = new Array(TERM_COLS).fill(0);
     }
     curRow = 0;
     curCol = 0;
     scrollTop = 0;
     scrollBottom = TERM_ROWS - 1;
     escRemain = [];
+    utfRemain = [];
     cursorVisible = true;
     cursorHidden = false;
     lastActivity = 0;
@@ -49,42 +43,57 @@ export function resetTerminal() {
 
 export function flushTTY() {
     if (!wasm) return;
-    
+
     const n = wasm.veecore_tty_read();
     const ptr = wasm.veecore_tty_buf();
-    
+
     let srcLen = n;
     let srcPtr = ptr;
     let pending = escRemain;
     escRemain = [];
-    
-    if (srcLen === 0 && pending.length === 0) return;
-    
-    let combined;
-    if (pending.length > 0) {
-        combined = new Uint8Array(pending.length + srcLen);
-        combined.set(pending, 0);
-        if (srcLen > 0) {
-            const newBytes = new Uint8Array(wasm.memory.buffer, srcPtr, srcLen);
-            combined.set(newBytes, pending.length);
-        }
-    } else {
-        combined = new Uint8Array(wasm.memory.buffer, srcPtr, srcLen);
+    let pendingU8 = utfRemain;
+    utfRemain = [];
+
+    if (srcLen === 0 && pending.length === 0 && pendingU8.length === 0) return;
+
+    let combined = new Uint8Array(pending.length + pendingU8.length + srcLen);
+    if (pending.length > 0) combined.set(pending, 0);
+    if (pendingU8.length > 0) combined.set(pendingU8, pending.length);
+    if (srcLen > 0) {
+        const newBytes = new Uint8Array(wasm.memory.buffer, srcPtr, srcLen);
+        combined.set(newBytes, pending.length + pendingU8.length);
     }
-    
+
     if (!termScreen || termScreen.length < TERM_ROWS) {
         termScreen = [];
         termAttr = [];
         for (let r = 0; r < TERM_ROWS; r++) {
-            termScreen[r] = new Array(TERM_COLS)
-                .fill(' ');
-            termAttr[r] = new Array(TERM_COLS)
-                .fill(0);
+            termScreen[r] = new Array(TERM_COLS).fill(' ');
+            termAttr[r] = new Array(TERM_COLS).fill(0);
         }
         curRow = 0;
         curCol = 0;
     }
-    
+
+    const writeCell = (ch) => {
+        if (curCol >= TERM_COLS) {
+            curCol = 0;
+            curRow++;
+            if (curRow >= TERM_ROWS) {
+                for (let r = 1; r < TERM_ROWS; r++) {
+                    termScreen[r - 1] = termScreen[r].slice();
+                    termAttr[r - 1] = termAttr[r].slice();
+                }
+                termScreen[TERM_ROWS - 1] = new Array(TERM_COLS).fill(' ');
+                termAttr[TERM_ROWS - 1] = new Array(TERM_COLS).fill(0);
+                curRow = TERM_ROWS - 1;
+            }
+        }
+        termScreen[curRow][curCol] = ch;
+        termAttr[curRow][curCol] = currentAttr;
+        curCol++;
+    };
+
     for (let i = 0; i < combined.length; i++) {
         const b = combined[i];
         if (b === 0x1B) {
@@ -94,7 +103,7 @@ export function flushTTY() {
                 break;
             }
             const next = combined[i + 1];
-            
+
             // IND = \x1BD — Index: move cursor down, scroll region up if at bottom
             if (next === 0x44) {
                 i += 2;
@@ -105,14 +114,12 @@ export function flushTTY() {
                         termScreen[r] = termScreen[r + 1].slice();
                         termAttr[r] = termAttr[r + 1].slice();
                     }
-                    termScreen[scrollBottom] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[scrollBottom] = new Array(TERM_COLS)
-                        .fill(0);
+                    termScreen[scrollBottom] = new Array(TERM_COLS).fill(' ');
+                    termAttr[scrollBottom] = new Array(TERM_COLS).fill(0);
                 }
                 continue;
             }
-            
+
             // RI = \x1BM — Reverse Index: move cursor up, scroll region down if at top
             if (next === 0x4D) {
                 i += 2;
@@ -123,14 +130,12 @@ export function flushTTY() {
                         termScreen[r] = termScreen[r - 1].slice();
                         termAttr[r] = termAttr[r - 1].slice();
                     }
-                    termScreen[scrollTop] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[scrollTop] = new Array(TERM_COLS)
-                        .fill(0);
+                    termScreen[scrollTop] = new Array(TERM_COLS).fill(' ');
+                    termAttr[scrollTop] = new Array(TERM_COLS).fill(0);
                 }
                 continue;
             }
-            
+
             // CSI sequences (3+ bytes: ESC [ ...)
             if (remain < 3) {
                 escRemain = Array.from(combined.slice(i));
@@ -140,64 +145,73 @@ export function flushTTY() {
             i++;
             if (combined[i] !== 0x5B) continue;
             i++;
-            let params = [0]
-                , pi = 0
-                , priv = false;
+            let params = [0], pi = 0, priv = false;
             while (i < combined.length) {
                 const c = combined[i];
-                if (c === 0x3F) { priv = true;
-                    i++; } else if (c >= 0x30 && c <= 0x39) { params[pi] = params[pi] * 10 + (c - 0x30);
-                    i++; } else if (c === 0x3B) { pi++;
+                if (c === 0x3F) {
+                    priv = true;
+                    i++;
+                } else if (c >= 0x30 && c <= 0x39) {
+                    params[pi] = params[pi] * 10 + (c - 0x30);
+                    i++;
+                } else if (c === 0x3B) {
+                    pi++;
                     params[pi] = 0;
-                    i++; } else break;
+                    i++;
+                } else {
+                    break;
+                }
             }
-            if (i >= combined.length) { escRemain = Array.from(combined.slice(escStart)); break; }
+            if (i >= combined.length) {
+                escRemain = Array.from(combined.slice(escStart));
+                break;
+            }
             const cmd = combined[i];
             if (cmd === 0x48 || cmd === 0x66) {
-                const row = (params[0] || 1) - 1
-                    , col = (params[1] || 1) - 1;
+                const row = (params[0] || 1) - 1, col = (params[1] || 1) - 1;
                 curRow = Math.max(0, Math.min(row, TERM_ROWS - 1));
                 curCol = Math.max(0, Math.min(col, TERM_COLS - 1));
             } else if (cmd === 0x4A && params[0] === 2) {
-                for (let r = 0; r < TERM_ROWS; r++) { termScreen[r].fill(' ');
-                    termAttr[r].fill(0); }
+                for (let r = 0; r < TERM_ROWS; r++) {
+                    termScreen[r].fill(' ');
+                    termAttr[r].fill(0);
+                }
             } else if (cmd === 0x4B) {
-                if (params[0] === 2) { termScreen[curRow].fill(' ');
-                    termAttr[curRow].fill(0); } else if (params[0] === 1)
-                    for (let c = 0; c <= curCol; c++) { termScreen[curRow][c] = ' ';
-                        termAttr[curRow][c] = 0; }
-                else
-                    for (let c = curCol; c < TERM_COLS; c++) { termScreen[curRow][c] = ' ';
-                        termAttr[curRow][c] = 0; }
+                if (params[0] === 2) {
+                    termScreen[curRow].fill(' ');
+                    termAttr[curRow].fill(0);
+                } else if (params[0] === 1) {
+                    for (let c = 0; c <= curCol; c++) {
+                        termScreen[curRow][c] = ' ';
+                        termAttr[curRow][c] = 0;
+                    }
+                } else {
+                    for (let c = curCol; c < TERM_COLS; c++) {
+                        termScreen[curRow][c] = ' ';
+                        termAttr[curRow][c] = 0;
+                    }
+                }
             } else if (cmd === 0x4C) {
-                const n = params[0] || 1
-                    , rStart = scrollTop
-                    , rEnd = scrollBottom;
+                const n = params[0] || 1, rStart = scrollTop, rEnd = scrollBottom;
                 const r = Math.max(curRow, rStart);
                 for (let i = rEnd; i >= r + n; i--) {
                     termScreen[i] = termScreen[i - n].slice();
                     termAttr[i] = termAttr[i - n].slice();
                 }
                 for (let i = r; i < r + n && i <= rEnd; i++) {
-                    termScreen[i] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[i] = new Array(TERM_COLS)
-                        .fill(0);
+                    termScreen[i] = new Array(TERM_COLS).fill(' ');
+                    termAttr[i] = new Array(TERM_COLS).fill(0);
                 }
             } else if (cmd === 0x4D) {
-                const n = params[0] || 1
-                    , rStart = scrollTop
-                    , rEnd = scrollBottom;
+                const n = params[0] || 1, rStart = scrollTop, rEnd = scrollBottom;
                 const r = Math.max(curRow, rStart);
                 for (let i = r; i <= rEnd - n; i++) {
                     termScreen[i] = termScreen[i + n].slice();
                     termAttr[i] = termAttr[i + n].slice();
                 }
                 for (let i = rEnd - n + 1; i <= rEnd; i++) {
-                    termScreen[i] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[i] = new Array(TERM_COLS)
-                        .fill(0);
+                    termScreen[i] = new Array(TERM_COLS).fill(' ');
+                    termAttr[i] = new Array(TERM_COLS).fill(0);
                 }
             } else if (cmd === 0x72) {
                 scrollTop = (params[0] || 1) - 1;
@@ -230,64 +244,48 @@ export function flushTTY() {
                     termScreen[r - 1] = termScreen[r].slice();
                     termAttr[r - 1] = termAttr[r].slice();
                 }
-                termScreen[TERM_ROWS - 1] = new Array(TERM_COLS)
-                    .fill(' ');
-                termAttr[TERM_ROWS - 1] = new Array(TERM_COLS)
-                    .fill(0);
+                termScreen[TERM_ROWS - 1] = new Array(TERM_COLS).fill(' ');
+                termAttr[TERM_ROWS - 1] = new Array(TERM_COLS).fill(0);
                 curRow = TERM_ROWS - 1;
             }
         } else if (b === 0x0C) {
-            for (let r = 0; r < TERM_ROWS; r++) { termScreen[r].fill(' ');
-                termAttr[r].fill(0); }
+            for (let r = 0; r < TERM_ROWS; r++) {
+                termScreen[r].fill(' ');
+                termAttr[r].fill(0);
+            }
             curRow = 0;
             curCol = 0;
         } else if (b === 0x08) {
-            if (curCol > 0) { curCol--;
+            if (curCol > 0) {
+                curCol--;
                 termScreen[curRow][curCol] = ' ';
-                termAttr[curRow][curCol] = 0; }
+                termAttr[curRow][curCol] = 0;
+            }
         } else if (b === 0x0D) {
             if (i + 1 < combined.length && combined[i + 1] === 0x0A) continue;
             termScreen[curRow].fill(' ');
             termAttr[curRow].fill(0);
             curCol = 0;
         } else if (b >= 0x20 && b < 0x80) {
-            if (curCol >= TERM_COLS) {
-                curCol = 0;
-                curRow++;
-                if (curRow >= TERM_ROWS) {
-                    for (let r = 1; r < TERM_ROWS; r++) {
-                        termScreen[r - 1] = termScreen[r].slice();
-                        termAttr[r - 1] = termAttr[r].slice();
-                    }
-                    termScreen[TERM_ROWS - 1] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[TERM_ROWS - 1] = new Array(TERM_COLS)
-                        .fill(0);
-                    curRow = TERM_ROWS - 1;
+            writeCell(String.fromCharCode(b));
+        } else if (b === 0xE2) {
+            if (i + 2 < combined.length) {
+                const b2 = combined[i + 1];
+                const b3 = combined[i + 2];
+                if (b2 === 0x96 && b3 === 0x84) {
+                    writeCell('\u2584');
+                    i += 2;
+                } else if (b2 === 0x96 && b3 === 0x80) {
+                    writeCell('\u2580');
+                    i += 2;
+                } else if (b2 === 0x96 && b3 === 0x88) {
+                    writeCell('\u2588');
+                    i += 2;
                 }
+            } else {
+                utfRemain = Array.from(combined.slice(i));
+                break;
             }
-            termScreen[curRow][curCol] = String.fromCharCode(b);
-            termAttr[curRow][curCol] = currentAttr;
-            curCol++;
-        } else if (b >= 0x80) {
-            if (curCol >= TERM_COLS) {
-                curCol = 0;
-                curRow++;
-                if (curRow >= TERM_ROWS) {
-                    for (let r = 1; r < TERM_ROWS; r++) {
-                        termScreen[r - 1] = termScreen[r].slice();
-                        termAttr[r - 1] = termAttr[r].slice();
-                    }
-                    termScreen[TERM_ROWS - 1] = new Array(TERM_COLS)
-                        .fill(' ');
-                    termAttr[TERM_ROWS - 1] = new Array(TERM_COLS)
-                        .fill(0);
-                    curRow = TERM_ROWS - 1;
-                }
-            }
-            termScreen[curRow][curCol] = String.fromCharCode(b);
-            termAttr[curRow][curCol] = currentAttr;
-            curCol++;
         }
     }
     cursorVisible = true;
@@ -299,55 +297,64 @@ export function renderTerminal() {
     const c = document.getElementById('term-canvas');
     const parent = document.getElementById('term-container');
     const rect = parent.getBoundingClientRect();
-    const cols = TERM_COLS
-        , rows = TERM_ROWS;
+    const cols = TERM_COLS, rows = TERM_ROWS;
     const dpr = window.devicePixelRatio || 1;
-    
+
     const w = rect.width;
     const h = rect.height;
-    
+
     c.style.width = w + 'px';
     c.style.height = h + 'px';
     c.width = Math.floor(w * dpr);
     c.height = Math.floor(h * dpr);
-    
+
     charW = w / cols;
     charH = h / rows;
-    
+
     const xOff = 0;
     const yOff = 0;
-    
+
     const ctx = c.getContext('2d');
     ctx.scale(dpr, dpr);
     ctx.textBaseline = 'top';
-    
+
     ctx.clearRect(0, 0, w, h);
-    
+
     ctx.fillStyle = '#33ff33';
     const fontSize = Math.floor(charH);
     ctx.font = fontSize + 'px "VT323", monospace';
-    
+
     if (!termScreen || termScreen.length < rows) {
         termScreen = [];
         termAttr = [];
         for (let r = 0; r < rows; r++) {
-            termScreen[r] = new Array(cols)
-                .fill(' ');
-            termAttr[r] = new Array(cols)
-                .fill(0);
+            termScreen[r] = new Array(cols).fill(' ');
+            termAttr[r] = new Array(cols).fill(0);
         }
         curRow = 0;
         curCol = 0;
     }
-    
+
+    const rowB = new Array(rows + 1), colB = new Array(cols + 1);
+    for (let r = 0; r <= rows; r++) rowB[r] = Math.round(r * charH + yOff);
+    for (let c = 0; c <= cols; c++) colB[c] = Math.round(c * charW + xOff);
+
+    const paintBlock = (ch, x0, y0, x1, y1) => {
+        const mid = y0 + Math.round((y1 - y0) / 2);
+        if (ch === '\u2588') ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
+        else if (ch === '\u2580') ctx.fillRect(x0, y0, x1 - x0, mid - y0);
+        else if (ch === '\u2584') ctx.fillRect(x0, mid, x1 - x0, y1 - mid);
+    };
+
     for (let r = 0; r < rows; r++) {
         const l = termScreen[r];
         const a = termAttr[r];
-        const y0 = Math.round(r * charH + yOff);
-        const y1 = Math.round((r + 1) * charH + yOff);
+        const y0 = rowB[r];
+        const y1 = rowB[r + 1];
         for (let c = 0; c < cols; c++) {
-            const x0 = Math.round(c * charW + xOff);
-            const x1 = Math.round((c + 1) * charW + xOff);
+            const x0 = colB[c];
+            const x1 = colB[c + 1];
+            const ch = l[c];
             if (a && a[c] & 1) {
                 ctx.fillStyle = '#33ff33';
                 ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -355,25 +362,31 @@ export function renderTerminal() {
             } else {
                 ctx.fillStyle = '#33ff33';
             }
-            ctx.fillText(l[c], x0, y0);
+            if (ch === '\u2580' || ch === '\u2584' || ch === '\u2588')
+                paintBlock(ch, x0, y0, x1, y1);
+            else
+                ctx.fillText(ch, x0, y0);
         }
     }
-    
+
     const cr = Math.min(curRow, rows - 1);
     const cc = Math.min(curCol, cols - 1);
-    
+
     if (running && cursorVisible && !cursorHidden) {
         const ch = termScreen[cr][cc];
-        const x0 = Math.round(cc * charW + xOff);
-        const x1 = Math.round((cc + 1) * charW + xOff);
-        const y0 = Math.round(cr * charH + yOff);
-        const y1 = Math.round((cr + 1) * charH + yOff);
-        
+        const x0 = colB[cc];
+        const x1 = colB[cc + 1];
+        const y0 = rowB[cr];
+        const y1 = rowB[cr + 1];
+
         if (ch && ch !== ' ') {
             ctx.fillStyle = '#33ff33';
             ctx.fillRect(x0, y0, x1 - x0, y1 - y0);
             ctx.fillStyle = '#030302';
-            ctx.fillText(ch, x0, y0);
+            if (ch === '\u2580' || ch === '\u2584' || ch === '\u2588')
+                paintBlock(ch, x0, y0, x1, y1);
+            else
+                ctx.fillText(ch, x0, y0);
         } else {
             ctx.fillStyle = '#33ff33';
             ctx.fillRect(x0, y0, x1 - x0, y1 - y0);

@@ -3,43 +3,29 @@ import {
     DISK_SECTOR_SIZE, VOL_MAX, BD_ROOT_ENTRIES, BD_ENTRY_SIZE, getVmap, volumeStats
 } from './bdos.js';
 
-const REG_NAMES = ["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2"
-                   , "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5"
-                   , "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7"
-                   , "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
+const REG_NAMES = ["zero", "ra", "sp", "gp", "tp", "t0", "t1", "t2",
+    "s0", "s1", "a0", "a1", "a2", "a3", "a4", "a5",
+    "a6", "a7", "s2", "s3", "s4", "s5", "s6", "s7",
+    "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"];
 const S0_KERN_LOAD = 0x006;
 const S0_KERN_SIZE = 0x00A;
 
-let prevRegs = new Array(32)
-    .fill(0);
-let regFlashTimers = new Array(32)
-    .fill(null);
+let prevRegs = new Array(32).fill(0);
+let regFlashTimers = new Array(32).fill(null);
 let regEls = null;
 
-let DISK_BASE = null
-    , DISK_BUFFER = null
-    , DISK_SECTOR = null;
-let KBD_BASE = null
-    , KBD_DATA = null
-    , KBD_STAT = null;
-let DSP_BASE = null
-    , DSP_DATA = null;
-let CLK_BASE = null
-    , CLK_KHZ = null;
-let TIMER_BASE = null
-    , TIMER_CSTR = null
-    , TIMER_CNTR = null;
-let DMA_BASE = null
-    , DMA_SAR = null
-    , DMA_DAR = null
-    , DMA_WCR = null
-    , DMA_CSTR = null;
-let XIP_BASE = null
-    , XIP_LEN = null;
+let DISK_BASE = null, DISK_BUFFER = null, DISK_SECTOR = null;
+let KBD_BASE = null, KBD_DATA = null, KBD_STAT = null;
+let DSP_BASE = null, DSP_DATA = null;
+let CLK_BASE = null, CLK_KHZ = null;
+let TIMER_BASE = null, TIMER_CSTR = null, TIMER_CNTR = null;
+let DMA_BASE = null, DMA_SAR = null, DMA_DAR = null, DMA_WCR = null, DMA_CSTR = null;
+let XIP_BASE = null, XIP_LEN = null;
 
 function inRange(addr, base, size) {
     return addr >= base && addr < base + size;
 }
+
 const memFlash = [];
 let manualAddr = null;
 
@@ -99,12 +85,12 @@ function busTx(i) {
 
 export function updatePanels() {
     if (!wasm) return;
-    
+
     updateMemoryMap();
-    
+
     const flashHead = document.getElementById('mmap-flash-head');
     if (flashHead) flashHead.classList.toggle('hidden', wasm.veecore_xip_mode() === 0);
-    
+
     if (DISK_BASE === null) {
         DISK_BASE = wasm.veecore_disk_base();
         DISK_BUFFER = DISK_BASE;
@@ -125,30 +111,22 @@ export function updatePanels() {
         DMA_WCR = DMA_BASE + 8;
         DMA_CSTR = DMA_BASE + 12;
     }
-    
+
     const pc = wasm.veecore_pc();
-    const pcHex = '0x' + pc.toString(16)
-        .toUpperCase()
-        .padStart(8, '0');
-    document.getElementById('cpu-pc')
-        .textContent = pcHex;
+    const pcHex = '0x' + pc.toString(16).toUpperCase().padStart(8, '0');
+    document.getElementById('cpu-pc').textContent = pcHex;
     const disasmPtr = wasm.veecore_disasm();
     const disasmLen = wasm.veecore_disasm_len();
     const disasmBytes = new Uint8Array(wasm.memory.buffer, disasmPtr, disasmLen);
-    const instr = new TextDecoder()
-        .decode(disasmBytes);
-    document.getElementById('cpu-inst')
-        .textContent = instr;
-    document.getElementById('cpu-hdr-status')
-        .textContent = instr + ' | PC ' + pcHex;
-    
+    const instr = new TextDecoder().decode(disasmBytes);
+    document.getElementById('cpu-inst').textContent = instr;
+    document.getElementById('cpu-hdr-status').textContent = instr + ' | PC ' + pcHex;
+
     if (regEls) {
         for (let i = 0; i < 32; i++) {
             const v = wasm.veecore_reg(i) >>> 0;
             const el = regEls[i];
-            el.textContent = '0x' + v.toString(16)
-                .toUpperCase()
-                .padStart(8, '0');
+            el.textContent = '0x' + v.toString(16).toUpperCase().padStart(8, '0');
             if (prevRegs[i] !== v) {
                 prevRegs[i] = v;
                 el.classList.add('reg-flash');
@@ -157,38 +135,31 @@ export function updatePanels() {
             }
         }
     }
-    
+
     // DMA
     const stepNames = ['Byte', 'HalfWord', 'Word'];
     const sar = wasm.veecore_dma_byte(DMA_SAR) | (wasm.veecore_dma_byte(DMA_SAR + 1) << 8);
     const dar = wasm.veecore_dma_byte(DMA_DAR) | (wasm.veecore_dma_byte(DMA_DAR + 1) << 8);
-    let wcr = wasm.veecore_dma_byte(DMA_WCR) | (wasm.veecore_dma_byte(DMA_WCR + 1) << 8);
+    const wcr = wasm.veecore_dma_byte(DMA_WCR) | (wasm.veecore_dma_byte(DMA_WCR + 1) << 8);
     const cstr = wasm.veecore_dma_byte(DMA_CSTR);
     const active = !!(cstr & 1);
     const stream = !!(cstr & 2);
     const step = wasm.veecore_dma_step();
-    const el = document.getElementById('dma');
-    el.innerHTML = '<div class="d-row"><span class="l2">State</span><span class="l3">' + (active ? 'Active' : 'Idle') + '</span></div>' +
-        '<div class="d-row"><span class="l2">Source</span><span class="l3 l1">0x' + sar.toString(16)
-        + '</span></div>' +
-        '<div class="d-row"><span class="l2">Destination</span><span class="l3 warn">0x' + dar.toString(16)
-        + '</span></div>' +
+    const dmaEl = document.getElementById('dma');
+    dmaEl.innerHTML = '<div class="d-row"><span class="l2">State</span><span class="l3">' + (active ? 'Active' : 'Idle') + '</span></div>' +
+        '<div class="d-row"><span class="l2">Source</span><span class="l3 l1">0x' + sar.toString(16) + '</span></div>' +
+        '<div class="d-row"><span class="l2">Destination</span><span class="l3 warn">0x' + dar.toString(16) + '</span></div>' +
         '<div class="d-row"><span class="l2">Bytes</span><span class="l3">' + wcr + '</span></div>' +
         '<div class="d-row"><span class="l2">Step</span><span class="l3">' + (1 << step) + ' (' + stepNames[step] + ')</span></div>' +
         '<div class="d-row"><span class="l2">Mode</span><span class="l3">' + (stream ? 'Stream' : 'Normal') + '</span></div>';
-    
+
     // DMA state badge
-    {
-        const state = active ? 'Active' : 'Idle';
-        document.getElementById('dma-state')
-            .textContent = state;
-    }
-    
+    document.getElementById('dma-state').textContent = active ? 'Active' : 'Idle';
+
     // Timer
     const timerCstr = wasm.veecore_timer_cstr();
     const timerCntr = wasm.veecore_timer_cntr();
-    document.getElementById('timer-cntr')
-        .textContent = timerCntr.toLocaleString();
+    document.getElementById('timer-cntr').textContent = timerCntr.toLocaleString();
     const timerRunning = timerCstr & 1;
     const modeBit = timerCstr & 2;
     const overflow = timerCstr & 4;
@@ -196,18 +167,17 @@ export function updatePanels() {
     const prescNames = ['1', '8', '64', '256'];
     const stateText = overflow ? 'Overflow' : (timerRunning ? 'Running' : 'Stopped');
     const modeText = modeBit ? 'One-shot' : 'Continuous';
-    
+
     const timerModeEl = document.getElementById('timer-mode');
     timerModeEl.textContent = stateText + ' (' + modeText + ')';
-    
+
     timerModeEl.classList.remove('text-warn', 'text-l1', 'text-l3');
     if (overflow) timerModeEl.classList.add('text-warn');
     else if (timerRunning) timerModeEl.classList.add('text-l1');
     else timerModeEl.classList.add('text-l3');
-    
-    document.getElementById('timer-prescale')
-        .textContent = prescNames[prescIdx];
-    
+
+    document.getElementById('timer-prescale').textContent = prescNames[prescIdx];
+
     // Timer badge
     const timerBadge = document.getElementById('timer-badge');
     if (timerCstr & 4) {
@@ -217,7 +187,7 @@ export function updatePanels() {
     } else {
         timerBadge.textContent = 'Stopped';
     }
-    
+
     // Storage: Disk controller vs XIP flash window (mode-dependent panel)
     const xipOn = wasm.veecore_xip_mode() !== 0;
     const xipBase = wasm.veecore_xip_base();
@@ -225,32 +195,23 @@ export function updatePanels() {
     if (xipOn) {
         XIP_BASE = xipBase;
         XIP_LEN = xipLen;
-        document.getElementById('disk-panel-title')
-            .textContent = 'Flash';
-        document.getElementById('disk-state-badge')
-            .textContent = 'Read-only';
-        document.getElementById('disk-row1')
-            .style.display = 'none';
-        document.getElementById('disk-row2')
-            .style.display = 'none';
+        document.getElementById('disk-panel-title').textContent = 'Flash';
+        document.getElementById('disk-state-badge').textContent = 'Read-only';
+        document.getElementById('disk-row1').style.display = 'none';
+        document.getElementById('disk-row2').style.display = 'none';
         const l3 = document.getElementById('disk-row3-label');
         l3.textContent = 'Last Access';
         l3.title = 'Last CPU access into the flash window';
         const sEl = document.getElementById('disk-state');
-        sEl.textContent = '0x' + wasm.veecore_last_mem_addr()
-            .toString(16)
-            .toUpperCase();
+        sEl.textContent = '0x' + wasm.veecore_last_mem_addr().toString(16).toUpperCase();
         sEl.classList.remove('text-l1', 'text-l3');
         sEl.classList.add('text-warn');
     } else {
         XIP_BASE = null;
         XIP_LEN = null;
-        document.getElementById('disk-panel-title')
-            .textContent = 'Disk';
-        document.getElementById('disk-row1')
-            .style.display = '';
-        document.getElementById('disk-row2')
-            .style.display = '';
+        document.getElementById('disk-panel-title').textContent = 'Disk';
+        document.getElementById('disk-row1').style.display = '';
+        document.getElementById('disk-row2').style.display = '';
         const l1 = document.getElementById('disk-row1-label');
         l1.textContent = 'Sector';
         l1.title = 'Current sector LBA address';
@@ -260,44 +221,39 @@ export function updatePanels() {
         const l3 = document.getElementById('disk-row3-label');
         l3.textContent = 'State';
         l3.title = 'Disk controller state machine';
-        document.getElementById('disk-sector')
-            .textContent = wasm.veecore_disk_sector();
-        document.getElementById('disk-offset')
-            .textContent = wasm.veecore_disk_offset();
+        document.getElementById('disk-sector').textContent = wasm.veecore_disk_sector();
+        document.getElementById('disk-offset').textContent = wasm.veecore_disk_offset();
         const diskState = wasm.veecore_disk_state();
         const diskStates = ['Idle', 'Buffer Write (BFWR)', 'Buffer Read (BFRD)', 'Disk Read (DISKR)', 'Disk Write (DISKW)'];
         const diskStateEl = document.getElementById('disk-state');
         diskStateEl.textContent = diskStates[diskState];
         diskStateEl.classList.remove('text-l1', 'text-l3');
         diskStateEl.classList.add(diskState ? 'text-l1' : 'text-l3');
-        document.getElementById('disk-state-badge')
-            .textContent = diskStates[diskState];
+        document.getElementById('disk-state-badge').textContent = diskStates[diskState];
     }
-    
+
     // Volume stats
     updateVolumeStats();
-    
+
     // Bus
     const txCount = wasm.veecore_bus_tx_count();
     const txList = document.getElementById('bus-tx-list');
     const txItems = [];
     for (let i = 0; i < txCount && i < 64; i++) {
         const t = busTx(i);
-        txItems.push('<div class="bus-tx-entry"><span class="bus-tx-src">' + t.srcName + '</span><span class="bus-tx-arrow">' + t.arrow + '</span><span class="bus-tx-addr">0x' + t.dstAddr.toString(16)
-            .toUpperCase() + '</span><span class="bus-tx-dst">' + t.dstName + '</span><span class="bus-tx-type ' + (t.isWrite ? 'w' : 'r') + '">' + (t.isWrite ? '(Write)' : '(Read)') + '</span></div>');
+        txItems.push('<div class="bus-tx-entry"><span class="bus-tx-src">' + t.srcName + '</span><span class="bus-tx-arrow">' + t.arrow + '</span><span class="bus-tx-addr">0x' + t.dstAddr.toString(16).toUpperCase() + '</span><span class="bus-tx-dst">' + t.dstName + '</span><span class="bus-tx-type ' + (t.isWrite ? 'w' : 'r') + '">' + (t.isWrite ? '(Write)' : '(Read)') + '</span></div>');
     }
     txList.innerHTML = txItems.join('');
-    
+
     // Bus last transaction badge
     const busTxBadge = document.getElementById('bus-last-tx');
     if (txCount > 0) {
         const t = busTx(0);
-        busTxBadge.innerHTML = '<span>' + t.srcName + ' <span class="ba">' + t.arrow + '</span> 0x' + t.dstAddr.toString(16)
-            .toUpperCase() + ' ' + t.dstName + ' ' + (t.isWrite ? '(Write)' : '(Read)') + '</span>';
+        busTxBadge.innerHTML = '<span>' + t.srcName + ' <span class="ba">' + t.arrow + '</span> 0x' + t.dstAddr.toString(16).toUpperCase() + ' ' + t.dstName + ' ' + (t.isWrite ? '(Write)' : '(Read)') + '</span>';
     } else {
         busTxBadge.textContent = '—';
     }
-    
+
     updateMemView();
 }
 
@@ -323,15 +279,13 @@ function updateMemView() {
         addr = (wasm.veecore_last_mem_addr() % limit) & 0xFFF0;
         const el = document.getElementById('mem-goto');
         if (document.activeElement !== el) {
-            el.value = '0x' + addr.toString(16)
-                .padStart(addrPad, '0')
-                .toUpperCase();
+            el.value = '0x' + addr.toString(16).padStart(addrPad, '0').toUpperCase();
         }
     }
     const memAddr = wasm.veecore_last_mem_addr() % limit;
     const memSize = wasm.veecore_last_mem_size();
     const memWrite = wasm.veecore_last_mem_write();
-    
+
     const now = performance.now();
     if (memSize > 0) {
         memFlash.push({ addr: memAddr, size: memSize, write: memWrite, time: now });
@@ -339,7 +293,7 @@ function updateMemView() {
     while (memFlash.length > 0 && memFlash[0].time < now - 300) {
         memFlash.shift();
     }
-    
+
     function isFlashing(a) {
         for (let i = 0; i < memFlash.length; i++) {
             const f = memFlash[i];
@@ -347,7 +301,7 @@ function updateMemView() {
         }
         return '';
     }
-    
+
     let html = '';
     for (let r = 0; r < 8; r++) {
         const a = xipOn ? (addr + r * 16) : ((addr + r * 16) & 0xFFFF);
@@ -359,18 +313,13 @@ function updateMemView() {
                 : wasm.veecore_ram_byte(addr2);
             const cls = isFlashing(addr2);
             bytes += (cls ? '<span class="' + cls + '">' : '') +
-                b.toString(16)
-                .padStart(2, '0')
-                .toUpperCase() +
+                b.toString(16).padStart(2, '0').toUpperCase() +
                 (cls ? '</span>' : '') + ' ';
             if (c === 7) bytes += ' ';
         }
-        html += '<div class="mem-row"><span class="mem-addr">' + a.toString(16)
-            .padStart(addrPad, '0')
-            .toUpperCase() + ': </span><span class="mem-bytes">' + bytes + '</span></div>';
+        html += '<div class="mem-row"><span class="mem-addr">' + a.toString(16).padStart(addrPad, '0').toUpperCase() + ': </span><span class="mem-bytes">' + bytes + '</span></div>';
     }
-    document.getElementById('mem-view')
-        .innerHTML = html;
+    document.getElementById('mem-view').innerHTML = html;
 }
 
 let mmapInit = false;
@@ -380,42 +329,32 @@ let mmapInit = false;
  * always matches the loaded image. */
 function updateMemoryMap() {
     if (mmapInit) return;
-    var diskPtr = wasm.veecore_disk_ptr();
-    var diskLen = wasm.veecore_disk_len();
+    const diskPtr = wasm.veecore_disk_ptr();
+    const diskLen = wasm.veecore_disk_len();
     if (diskLen < DISK_SECTOR_SIZE) return;
-    var s0 = new Uint8Array(wasm.memory.buffer, diskPtr, DISK_SECTOR_SIZE);
-    var kernBase = s0[S0_KERN_LOAD] | (s0[S0_KERN_LOAD + 1] << 8) |
+    const s0 = new Uint8Array(wasm.memory.buffer, diskPtr, DISK_SECTOR_SIZE);
+    const kernBase = s0[S0_KERN_LOAD] | (s0[S0_KERN_LOAD + 1] << 8) |
         (s0[S0_KERN_LOAD + 2] << 16) | (s0[S0_KERN_LOAD + 3] << 24);
-    var kernSize = s0[S0_KERN_SIZE] | (s0[S0_KERN_SIZE + 1] << 8) |
+    const kernSize = s0[S0_KERN_SIZE] | (s0[S0_KERN_SIZE + 1] << 8) |
         (s0[S0_KERN_SIZE + 2] << 16) | (s0[S0_KERN_SIZE + 3] << 24);
     if (kernBase < 0x0100 || kernBase >= 0xFF00) return;
     if (kernSize <= 0 || kernBase + kernSize > 0x10000) return;
     mmapInit = true;
-    
+
     function hex4(v) {
-        return '0x' + v.toString(16)
-            .toUpperCase()
-            .padStart(4, '0');
+        return '0x' + v.toString(16).toUpperCase().padStart(4, '0');
     }
-    
-    document.getElementById('mmap-user-addr')
-        .textContent = hex4(0x0100) + '–' + hex4(kernBase - 1);
-    document.getElementById('mmap-user-size')
-        .textContent = Math.floor((kernBase - 0x0100) / 1024) + ' KB';
-    document.getElementById('mmap-kern-addr')
-        .textContent = hex4(kernBase) + '–' + hex4(kernBase + kernSize - 1);
-    document.getElementById('mmap-kern-size')
-        .textContent = (kernSize / 1024)
-        .toFixed(1) + ' KB';
+
+    document.getElementById('mmap-user-addr').textContent = hex4(0x0100) + '–' + hex4(kernBase - 1);
+    document.getElementById('mmap-user-size').textContent = Math.floor((kernBase - 0x0100) / 1024) + ' KB';
+    document.getElementById('mmap-kern-addr').textContent = hex4(kernBase) + '–' + hex4(kernBase + kernSize - 1);
+    document.getElementById('mmap-kern-size').textContent = (kernSize / 1024).toFixed(1) + ' KB';
 
     if (bootBin && bootBin.length > 0) {
-        document.getElementById('mmap-boot-addr')
-            .textContent = '0x0000–' + hex4(bootBin.length - 1);
-        document.getElementById('mmap-boot-size')
-            .textContent = bootBin.length < 1024
+        document.getElementById('mmap-boot-addr').textContent = '0x0000–' + hex4(bootBin.length - 1);
+        document.getElementById('mmap-boot-size').textContent = bootBin.length < 1024
             ? bootBin.length + ' B'
-            : (bootBin.length / 1024)
-                .toFixed(1) + ' KB';
+            : (bootBin.length / 1024).toFixed(1) + ' KB';
     }
 }
 
@@ -425,21 +364,21 @@ const VOL_LETTERS = ['A:', 'B:', 'C:', 'D:'];
 let lastVolStatsTime = 0;
 
 function updateVolumeStats() {
-    var now = performance.now();
+    const now = performance.now();
     if (now - lastVolStatsTime < 500) return;
     lastVolStatsTime = now;
 
-    var host = document.getElementById('disk-volumes');
-    var vmap = getVmap();
+    const host = document.getElementById('disk-volumes');
+    const vmap = getVmap();
     if (!vmap) {
         host.innerHTML = '';
         return;
     }
 
-    var usedTotal = 0;
-    var rows = '';
-    for (var v = 0; v < VOL_MAX; v++) {
-        var st = volumeStats(vmap, v);
+    let usedTotal = 0;
+    let rows = '';
+    for (let v = 0; v < VOL_MAX; v++) {
+        const st = volumeStats(vmap, v);
         if (!st.mounted) {
             rows += '<div class="vol-row vol-muted">' +
                 '<span class="vol-name">' + VOL_LETTERS[v] + '</span>' +
@@ -449,10 +388,10 @@ function updateVolumeStats() {
                 '</div>';
             continue;
         }
-        var usedBlocks = st.totalBlocks - st.freeBlocks;
+        const usedBlocks = st.totalBlocks - st.freeBlocks;
         usedTotal += usedBlocks;
-        var pct = st.totalBlocks > 0 ? (usedBlocks / st.totalBlocks * 100) : 0;
-        var fill = st.totalBlocks > 0 ? Math.min(100, Math.max(0, pct)) : 0;
+        const pct = st.totalBlocks > 0 ? (usedBlocks / st.totalBlocks * 100) : 0;
+        const fill = st.totalBlocks > 0 ? Math.min(100, Math.max(0, pct)) : 0;
         rows += '<div class="vol-row">' +
             '<span class="vol-name ' + VOL_CLASS[v] + '">' + VOL_LETTERS[v] + '</span>' +
             '<span class="vol-state">' + (st.ro ? 'R/O' : 'R/W') + '</span>' +
@@ -465,10 +404,10 @@ function updateVolumeStats() {
      * usable capacity. Mirrors the kernel's SYS disk_size_kb formula — the
      * raw block grid minus the per-volume reserved (volume header + root dir,
      * rounded to block size, plus the sentinel data block). */
-    var rootSecs = Math.ceil(BD_ROOT_ENTRIES * BD_ENTRY_SIZE / DISK_SECTOR_SIZE);
-    var hdrBlocks = Math.ceil((1 + rootSecs) / vmap.blockSecs);
-    var fixedTotal = vmap.numBlocks - VOL_MAX * (hdrBlocks + 1);
-    var upct = fixedTotal > 0 ? Math.min(100, Math.max(0, usedTotal / fixedTotal * 100)) : 0;
+    const rootSecs = Math.ceil(BD_ROOT_ENTRIES * BD_ENTRY_SIZE / DISK_SECTOR_SIZE);
+    const hdrBlocks = Math.ceil((1 + rootSecs) / vmap.blockSecs);
+    const fixedTotal = vmap.numBlocks - VOL_MAX * (hdrBlocks + 1);
+    const upct = fixedTotal > 0 ? Math.min(100, Math.max(0, usedTotal / fixedTotal * 100)) : 0;
     rows += '<div class="vol-row usage-row">' +
         '<span class="vol-name usage-label">Usage</span>' +
         '<span class="vol-fill"><div class="vol-fill-inner usage-fill" style="width:' + upct.toFixed(1) + '%"></div></span>' +
@@ -478,10 +417,8 @@ function updateVolumeStats() {
     host.innerHTML = rows;
 }
 
-document.getElementById('mem-goto')
-    .addEventListener('input', (e) => memGoto(e.target.value));
-document.getElementById('mem-goto')
-    .addEventListener('blur', () => {
-        manualAddr = null;
-        updatePanels();
-    });
+document.getElementById('mem-goto').addEventListener('input', (e) => memGoto(e.target.value));
+document.getElementById('mem-goto').addEventListener('blur', () => {
+    manualAddr = null;
+    updatePanels();
+});
