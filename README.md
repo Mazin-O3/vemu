@@ -6,7 +6,7 @@
 
 An 8-bit inspired RISC-V computer emulator, designed to give a simple environment for learning about computer architecture and operating systems.
 
-[![Try it Online](https://img.shields.io/badge/Launch_Emulator-green?style=flat-square)](https://mazin-o3.github.io/vemu/)
+[![Run Emulator](https://img.shields.io/badge/Run_Emulator-green?style=flat-square&logo=data:image/svg%2Bxml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAyNCAyNCc%2BPHBhdGggZmlsbD0nd2hpdGUnIGQ9J004IDV2MTRsMTEtN3onLz48L3N2Zz4=)](https://mazin-o3.github.io/vemu/)
 [![License](https://img.shields.io/github/license/Mazin-O3/cpm-neo?style=flat-square&color=yellow)](LICENSE)
 </div>
 
