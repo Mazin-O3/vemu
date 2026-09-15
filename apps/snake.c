@@ -1,7 +1,5 @@
 #include <cpmneo.h>
 
-#include "lib/delay.h"
-
 #define W   20
 #define H   20
 #define MAX (W * H)
