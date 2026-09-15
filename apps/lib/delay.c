@@ -1,10 +1,11 @@
+#include <syscall.h>
+
 #include "delay.h"
-#include "syscall.h"
 
 void delay(unsigned long ms)
 {
-    unsigned long start = sys_time();
-    while (sys_time() - start < ms);
+    unsigned long start = sys_millis();
+    while (sys_millis() - start < ms);
 }
 
 void delay_us(unsigned long us)

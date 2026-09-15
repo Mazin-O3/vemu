@@ -1,12 +1,9 @@
-#include "stdio.h"
-#include "string.h"
-#include "ctype.h"
-#include "stdlib.h"
-#include <ansi.h>
-#include "../lib/delay.h"
+#include <cpmneo.h>
 
-#define W 20
-#define H 20
+#include "lib/delay.h"
+
+#define W   20
+#define H   20
 #define MAX (W * H)
 
 static int qx[MAX], qy[MAX];
@@ -40,7 +37,7 @@ static void spawn_food(void)
 
 int main(void)
 {
-    int x, y;
+    int  x, y;
     char ch;
 
     printf(CSI_CLS CSI_HOME);
@@ -134,21 +131,22 @@ int main(void)
                 }
             }
 
-            int nx = qx[qh] + (dir == 0 ? 1 : dir == 2 ? -1
-                                                        : 0);
-            int ny = qy[qh] + (dir == 1 ? 1 : dir == 3 ? -1
-                                                        : 0);
+            int nx = qx[qh] + (dir == 0 ? 1 : dir == 2 ? -1 : 0);
+            int ny = qy[qh] + (dir == 1 ? 1 : dir == 3 ? -1 : 0);
 
             if (nx < 0 || nx >= W || ny < 0 || ny >= H)
                 dead = 1;
+
             for (int i = qh; !dead && i != qt; i = (i + 1) % MAX)
                 if (qx[i] == nx && qy[i] == ny)
                     dead = 1;
+
             if (dead)
                 break;
 
             printf(CSI_CUP, qy[qh] + 2, qx[qh] + 2);
             putchar('o');
+
             int nh = (qh + MAX - 1) % MAX;
 
             qx[nh] = nx;
@@ -158,9 +156,12 @@ int main(void)
             if (nx == fx && ny == fy)
             {
                 score++;
+
                 printf(CSI_CUP, H + 4, 1);
                 printf("Score: %d  ", score);
+
                 spawn_food();
+
                 printf(CSI_CUP, fy + 2, fx + 2);
                 putchar('*');
             }
@@ -168,6 +169,7 @@ int main(void)
             {
                 printf(CSI_CUP, qy[qt] + 2, qx[qt] + 2);
                 putchar(' ');
+
                 qt = (qt + MAX - 1) % MAX;
             }
 
@@ -179,9 +181,12 @@ int main(void)
 
         printf(CSI_CLS);
         printf(CSI_CUP, H / 2 + 1, W / 2 - 3);
+
         printf("Game Over!");
+
         printf(CSI_CUP, H / 2 + 3, W / 2 - 2);
         printf("Score: %d", score);
+
         printf(CSI_CUP, H / 2 + 5, W / 2 - 6);
         printf("Try again (Y/N) ");
         printf(CSI_SHOW);
@@ -202,5 +207,6 @@ int main(void)
 
     printf("\n");
     printf(CSI_SHOW);
+
     return 0;
 }

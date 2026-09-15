@@ -1,11 +1,10 @@
-#include "stdio.h"
-#include <ansi.h>
+#include <cpmneo.h>
 
 #define SCALE 10
-#define S (1 << SCALE)
+#define S     (1 << SCALE)
 
 #define SCREEN_WIDTH 80
-#define SCREEN_ROWS 24
+#define SCREEN_ROWS  24
 
 static int mb(int cr, int ci)
 {
@@ -37,9 +36,9 @@ int main(void)
     {
         for (col = 0; col < SCREEN_WIDTH; col++)
         {
-            int cr = -2 * S + col * (3 * S) / SCREEN_WIDTH;
-            int ci = -S + row * (2 * S) / SCREEN_ROWS;
-            int n = mb(cr, ci);
+            int  cr = -2 * S + col * (3 * S) / SCREEN_WIDTH;
+            int  ci = -S + row * (2 * S) / SCREEN_ROWS;
+            int  n = mb(cr, ci);
             char c;
 
             if (n == 0)
