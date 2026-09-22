@@ -3,7 +3,7 @@ use core::cmp;
 
 /// Execute-in-Place (XIP) flash window geometry.
 ///
-/// Mirrors cpm-neo/platform/vemu/config.sh:
+/// Mirrors cpm-neo/platform/vemu/config.h:
 ///   XIP_BASE = flash window base address in the CPU's address space
 ///
 /// There is no configured XIP_SIZE: the window is exactly the disk image —

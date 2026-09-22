@@ -1,0 +1,138 @@
+Welcome to CP/M Neo!
+
+START HERE
+------------------------------------------------------------------------
+
+  Try these commands:
+
+    DIR         List files
+    HELP        Show available commands
+    SYS         Show system information
+    CLS         Clear the screen
+
+
+TRY SOMETHING
+------------------------------------------------------------------------
+
+  Start BASIC:
+
+    > BASIC
+
+  Then enter:
+
+    10 PRINT "HELLO FROM CP/M NEO!"
+    RUN
+
+  Type EXIT to return to CP/M Neo.
+
+
+ESSENTIAL COMMANDS
+------------------------------------------------------------------------
+
+  DIR [filespec]        List files
+  TYPE [filespec]       Display a text file
+  COPY src dst          Copy files
+  ERA filespec          Delete files
+  REN old new           Rename a file
+
+  Type HELP <command> for detailed information.
+
+
+NAVIGATION
+------------------------------------------------------------------------
+
+  CP/M Neo has 4 volumes:
+
+    A:  B:  C:  D:
+
+  Switch volume:
+
+    > B:
+
+  Each volume contains 16 user areas:
+
+    0  1  2  ... 15
+
+  Switch user area:
+
+    > USER 5
+
+  Or use the short form:
+
+    > 12:
+
+  Switch volume and user area:
+
+    > D7:
+    > A0:
+
+
+VOLUME MANAGEMENT
+------------------------------------------------------------------------
+
+  Show volume status:
+
+    > STAT DSK:
+
+  Resize or unmount a volume with SET:
+
+    > SET B: RZ +8
+      Grow volume B: by 8 KB
+
+    > SET B: RZ -8
+      Shrink volume B: by 8 KB
+
+    > SET B: UM
+      Unmount volume B: (B: must contain no files)
+
+    > SET B: MT
+      Mount volume B:
+
+    > SET B: RO
+      Make volume B: read-only
+
+  Type HELP SET for more information.
+
+
+FILE SPECIFICATIONS
+------------------------------------------------------------------------
+
+  Specify a volume and user area with a filename:
+
+    B5:MYFILE.TXT
+      MYFILE.TXT on volume B:, user area 5
+
+    10:PROG
+      PROG in user area 10 on the current volume
+
+
+FILENAMES
+------------------------------------------------------------------------
+
+  CP/M Neo uses 8.3 filenames:
+
+    EXAMPLE.TXT
+    HELLO.BAS
+    DATA1.BAK
+
+  Wildcards:
+
+    ?    Match one character
+    *    Match remaining characters
+
+    DIR *.BAS
+    DIR HELLO.*
+    DIR *.*
+
+
+NEED HELP?
+------------------------------------------------------------------------
+
+  HELP                List available commands
+  HELP <command>      Show detailed command help
+
+  Examples:
+
+    > HELP DIR
+    > HELP STAT
+    > HELP SET
